@@ -126,25 +126,25 @@ class TerminalTextBoxes():
         self.debugShowType = 1
 
 
-    #def createTextBox(self, name, fixedHeight = None, fixedWidth = None, split = 0, orientation = 2):
-    def createTextBox(self, name, width = None, height = None, pos = None, hOrient = 0, vOrient = 0,
+    def createTextBox(self, name, width = None, height = None, hPos = None, vPos = 0, hOrient = 0, vOrient = 0,
                       visable = True, wTextIndent = 0, hTextIndent = 0):
         """
             Box properties:
-                name                        - name of the textbox.
-                width                       - None if not fixed width (becomes textWidth).      Default: None
-                height                      - None if not fixed height (becomes textHeight).    Default: None
-                pos                         - Position between already existing boxes.
-                hOrient                     - Horizontal orientation of the box.                Default: 0 (Up)
-                vOrient                     - Vertical orientation of the box.                  Default: 0 (Left)
-                visable                     - If True the box is visable else it's not.         Default True
-                wTextIndent                 - Width indentation for text.                       Default: 0
-                hTextIndent                 - Height indentation for text.                      Default: 0
+                name                - name of the textbox.
+                width               - None if not fixed width (becomes textWidth).          Default: None
+                height              - None if not fixed height (becomes textHeight).        Default: None
+                hPos                - Position between already existing boxes horizontally. Default: None
+                vPos                - Position between already existing boxes vertically.   Default: 0
+                hOrient             - Horizontal orientation of the box.                    Default: 0 (Up)
+                vOrient             - Vertical orientation of the box.                      Default: 0 (Left)
+                visable             - If True the box is visable else it's not.             Default: True
+                wTextIndent         - Width indentation for text.                           Default: 0
+                hTextIndent         - Height indentation for text.                          Default: 0
 
-                boxWidth                    - The width of the box (frame included).
-                boxHeight                   - The height of the box (frame included).
-                textWidth                   - The width of the box (frame excluded).
-                textHeight                  - The height of the box (fram excluded).
+                boxWidth            - The width of the box (frame included).
+                boxHeight           - The height of the box (frame included).
+                textWidth           - The width of the box (frame excluded).
+                textHeight          - The height of the box (fram excluded).
 
                 FIX:
                 textWidthStartPos
@@ -173,11 +173,12 @@ class TerminalTextBoxes():
             raise Exception("vOrient is not of integer type or not within acceptable range.")
         self.box[name]["vOrient"] = vOrient
 
-        if pos != None:
-            if not isinstance(pos, int):
-                raise Exception("pos is not of integer type")
-            self.boxOrder.insert(pos, name)
+        if hPos != None:
+            if not isinstance(hPos, int):
+                raise Exception("hPos is not of integer type")
+            self.boxOrder.insert(hPos, name)
             # TODO: modify vOrient by looking at elements on both sides
+            # TODO: fix vPos as well, check how big list is? (How deep vertical is)
         elif hOrient == self.H_ORIENT["Left"]:
             self.boxOrder.insert(0, name)
         elif hOrient == self.H_ORIENT["Right"]:
@@ -234,10 +235,14 @@ class TerminalTextBoxes():
         # This will be distributed between the wForUnfixed boxes till remainingUnevenWidth == 0
         remainingUnevenWidth = wForUnfixed % (nbrOfWUnfixedBoxes if nbrOfWUnfixedBoxes > 0 else 1)
 
+        hIndex = 0
         wIndex = 0
         prevVerticalOrientation = None
         for name, attr in self.box.items():
-            attr["boxHeight"] = self.hTerminal - (self.INPUT_BOX_HEIGHT + self.FRAME_CHAR_LEN)
+            if attr["fixedHeight"] == None:
+                attr["boxHeight"] = self.hTerminal - (self.INPUT_BOX_HEIGHT + self.FRAME_CHAR_LEN)
+            else:
+                attr["boxHeight"] = attr["fixedHeight"]
 
             if attr["fixedWidth"] == None:
                 attr["boxWidth"] = (wForUnfixed // nbrOfWUnfixedBoxes) + (1 if remainingUnevenWidth > 0 else 0)
@@ -251,8 +256,12 @@ class TerminalTextBoxes():
             if attr["hOrient"] == self.H_ORIENT["Right"] and attr["fixedWidth"] != None:
                 wIndex = wIndex + wForUnused
 
-            attr["topLeft"] = {"x" : wIndex, "y" : 0}
-            attr["bottomRight"] = {"x" : wIndex + attr["boxWidth"] - 1, "y" : attr["boxHeight"] - 1}
+            if attr["vOrient"] == self.V_ORIENT["Down"] and attr["fixedHeight"] != None:
+                hIndex = hIndex + (self.hTerminal - (self.INPUT_BOX_HEIGHT + self.FRAME_CHAR_LEN) - attr["boxHeight"])
+
+            attr["topLeft"] = {"x" : wIndex, "y" : hIndex}
+            attr["bottomRight"] = {"x" : wIndex + attr["boxWidth"] - 1, "y" : hIndex + attr["boxHeight"] - 1}
+            hIndex = 0
             wIndex = wIndex + attr["boxWidth"]
 
         edgeConditions = []
@@ -324,11 +333,14 @@ class TerminalTextBoxes():
         #self.createTextBox("123456789012345678901234567890", 10, verticalOrientation=self.VERTICAL_ORIENTATION["Left"])
         #self.createTextBox("Hejsan4", 22, hOrient=self.H_ORIENT["Right"])
 
-        self.createTextBox("Hejsan1", hOrient=self.H_ORIENT["Left"], visable=False)
-        self.createTextBox("Hejsan2", 20, hOrient=self.H_ORIENT["Left"])
-        self.createTextBox("Hejsan3", 20, hOrient=self.H_ORIENT["Right"])
-        self.createTextBox("Hejsan4", hOrient=self.H_ORIENT["Right"], visable=False)
-        self.createTextBox("Hejsan5", 20, hOrient=self.H_ORIENT["Right"])
+        #self.createTextBox("Hejsan1", hOrient=self.H_ORIENT["Left"], visable=False)
+        #self.createTextBox("Hejsan2", 20, hOrient=self.H_ORIENT["Left"])
+        #self.createTextBox("Hejsan3", 20, 10, hOrient=self.H_ORIENT["Right"], vOrient=self.V_ORIENT["Down"])
+        #self.createTextBox("Hejsan4", hOrient=self.H_ORIENT["Right"], height=10)
+        #self.createTextBox("Hejsan5", 20, hOrient=self.H_ORIENT["Right"])
+
+        self.createTextBox("TestBox1", 25, 10, hOrient=self.H_ORIENT["Right"], vOrient=self.V_ORIENT["Down"])
+        self.createTextBox("TestBox2", 25, 10, hOrient=self.H_ORIENT["Left"], vOrient=self.V_ORIENT["Up"])
 
         #self.createTextBox("Hejsan5")
         self.update()
