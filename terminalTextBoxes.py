@@ -54,18 +54,31 @@ class TerminalTextBoxes():
             "Chartext"      : curses.A_CHARTEXT
         }
 
+        self.FRAME_STYLE = {
+            "singleLine"    : ["│", "┤", "├", "─", "┴", "┬", "┘", "┐", "└", "┌", "┼"],
+            "doubleLine"    : ["║", "╣", "╠", "═", "╩", "╦", "╝", "╗", "╚", "╔", "╬"],
+            "hash"          : ["#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#"],
+            "at"            : ["@", "@", "@", "@", "@", "@", "@", "@", "@", "@", "@"],
+            "star"          : ["*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"],
+            "blockFull"     : ["█", "█", "█", "█", "█", "█", "█", "█", "█", "█", "█"],
+            "blockVague0"   : ["▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓"],
+            "blockVague1"   : ["▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒"],
+            "blockVague2"   : ["░", "░", "░", "░", "░", "░", "░", "░", "░", "░", "░"],
+            "invisible"     : [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "]
+        }
+
         self.FRAME_CHAR = {
-            "vertical"          : "║",
-            "verticalLeft"      : "╣",
-            "verticalRight"     : "╠",
-            "horizontal"        : "═",
-            "horizontalUp"      : "╩",
-            "horizontalDown"    : "╦",
-            "leftUp"            : "╝",
-            "leftDown"          : "╗",
-            "rightUp"           : "╚",
-            "rightDown"         : "╔",
-            "cross"             : "╬"
+            "vertical"          : self.FRAME_STYLE["singleLine"][0],
+            "verticalLeft"      : self.FRAME_STYLE["singleLine"][1],
+            "verticalRight"     : self.FRAME_STYLE["singleLine"][2],
+            "horizontal"        : self.FRAME_STYLE["singleLine"][3],
+            "horizontalUp"      : self.FRAME_STYLE["singleLine"][4],
+            "horizontalDown"    : self.FRAME_STYLE["singleLine"][5],
+            "leftUp"            : self.FRAME_STYLE["singleLine"][6],
+            "leftDown"          : self.FRAME_STYLE["singleLine"][7],
+            "rightUp"           : self.FRAME_STYLE["singleLine"][8],
+            "rightDown"         : self.FRAME_STYLE["singleLine"][9],
+            "cross"             : self.FRAME_STYLE["singleLine"][10]
         }
         self.FRAME_CHAR_LEN = 1
         self.INPUT_PROMPT = "> "
@@ -350,13 +363,6 @@ class TerminalTextBoxes():
                 elif self.debugBoxInfoShow == self.debugBoxInfo["boxSize"]:
                     boxSize = f'box: w = {attr["boxWidth"]}, h = {attr["boxHeight"]}'
                     self.screen.addstr(y, x, boxSize[:(attr["boxWidth"] - 1 - self.FRAME_CHAR_LEN)])
-
-        #for name, attr in self.box.items():
-        #    print(name)
-        #    print(attr)
-        #    print()
-        #curses.endwin() # Close curses terminal
-        #exit()
 
         self.screen.addstr(self.hTerminal - 1 - self.INPUT_BOX_HEIGHT, 0, \
             self.wTerminal * self.FRAME_CHAR["horizontal"])
