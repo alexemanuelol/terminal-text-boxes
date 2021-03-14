@@ -9,3 +9,7 @@ A framework for terminal text box functionality used for chat applications, gene
 - Add "isChanged" as box variable to say if the box size is changed
 - Add a 'info box' above prompt? to display information
 - Re-think attr["textItems"], maybe have [textItem, color, attributes]?
+- Add append functions to box textItems
+- FIX EDGE CONDITIONS
+- Create 'box-sets' to say like "Hey, display this box-set now! Change to "prompt-user box-set"'
+- Put frame_style and text_attr into class again?

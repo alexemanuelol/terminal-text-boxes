@@ -56,7 +56,7 @@ class TerminalTextBoxes():
         curses.use_default_colors()
 
         # Color variables
-        self.COLORS = {
+        self.COLOR = {
             "black"     : 1,
             "blue"      : 2,
             "green"     : 3,
@@ -66,7 +66,7 @@ class TerminalTextBoxes():
             "yellow"    : 7,
             "white"     : 8
         }
-        for color, value in self.COLORS.items():
+        for color, value in self.COLOR.items():
             curses.init_pair(value, value - 1, -1)
 
         # Frame variables
@@ -529,7 +529,7 @@ class TerminalTextBoxes():
             elif char == "\n": # <ENTER>
                 if self.promptString != "":
                     self.textBoxMessages.append([self.promptString,
-                        curses.color_pair(self.COLORS["white"]) | curses.A_STANDOUT])
+                        curses.color_pair(self.COLOR["white"]) | curses.A_STANDOUT])
                 self.promptString = ""
                 self.promptCursorPos = 0
                 self.promptVCursorPos = 0
@@ -622,10 +622,10 @@ if __name__ == "__main__":
     obj.createTextBox("TestBox1", 25, 30, wTextIndent=2, hTextIndent=1)
     txt = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     for a in range(10):
-        obj.box["TestBox1"]["textItems"].append([txt, curses.color_pair(obj.COLORS["green"])])
+        obj.box["TestBox1"]["textItems"].append([txt, curses.color_pair(obj.COLOR["green"])])
 
     for a in range(10):
-        obj.box["TestBox2"]["textItems"].append([txt, curses.color_pair(obj.COLORS["red"])])
+        obj.box["TestBox2"]["textItems"].append([txt, curses.color_pair(obj.COLOR["red"])])
 
 
     obj.run()
