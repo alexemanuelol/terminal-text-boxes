@@ -102,6 +102,7 @@ class TerminalTextBoxes():
         # Box variables
         self.box                    = dict()
         self.boxOrder               = list()
+        self.focusedBox             = None
 
         # Minimum sizes
         self.PROMPT_MIN_WIDTH       = self.promptSignSize + 10
@@ -434,6 +435,8 @@ class TerminalTextBoxes():
 
         self.box[name] = dict()
 
+        self.focusedBox = name
+
         if width != None and not isinstance(width, int):
             raise Exception("width is not of integer type.")
         self.box[name]["fixedWidth"] = width
@@ -480,12 +483,20 @@ class TerminalTextBoxes():
         self.box[name]["scrollIndex"] = 0
 
 
+    def set_focus_box(self, name):
+        """ Set a box in focus i.e. make it scrollable. """
+        if name not in self.box:
+            raise Exception(f"Box {name} is not in self.box dictonary.")
+
+        self.focusedBox = name
+
+
     def __key_handler(self, event):
         """ Handler of key presses. """
         while True:
             char = self.screen.get_wch()
 
-            self.box["TestBox1"]["textItems"].append([str(repr(char)), curses.color_pair(obj.COLOR["green"])])
+            #self.box["TestBox1"]["textItems"].append([str(repr(char)), curses.color_pair(obj.COLOR["green"])])
             #print(repr(char))
 
             # GENERAL KEY EVENTS --------------------------------------------------------------------------------------
@@ -527,12 +538,15 @@ class TerminalTextBoxes():
 
             elif char == "\n": # <ENTER>
                 if self.promptString != "":
-                    self.textBoxMessages.append([self.promptString,
-                        curses.color_pair(self.COLOR["white"]) | curses.A_STANDOUT])
+                    self.box["TestBox1"]["textItems"].append([self.promptString, curses.color_pair(obj.COLOR["green"])])
+                    #self.textBoxMessages.append([self.promptString,
+                    #    curses.color_pair(self.COLOR["white"]) | curses.A_STANDOUT])
                 self.promptString = ""
                 self.promptCursorPos = 0
                 self.promptVCursorPos = 0
-                self.textBoxScrollIndex = 0
+                #self.textBoxScrollIndex = 0
+                #TEMP:
+                self.box[self.focusedBox]["scrollIndex"] = 0
 
             elif char == 330:                   # DELETE KEY
                 self.promptString = self.promptString[:self.promptCursorPos] + \
@@ -574,25 +588,22 @@ class TerminalTextBoxes():
 
             # BOX KEY EVENTS ------------------------------------------------------------------------------------------
             elif char == 259:                   # <ARROW-UP> KEY (Scroll up)
-                #if len(self.textBoxLines) + self.textBoxScrollIndex > self.textBoxHeight:
-                #    self.textBoxScrollIndex -= 1
-                pass
+                if len(self.box[self.focusedBox]["lines"]) + self.box[self.focusedBox]["scrollIndex"] > self.box[self.focusedBox]["textHeight"]:
+                    self.box[self.focusedBox]["scrollIndex"] -= 1
 
             elif char == 258:                   # <ARROW-DOWN> KEY (Scroll down)
-                if self.textBoxScrollIndex != 0:
-                    self.textBoxScrollIndex += 1
+                if self.box[self.focusedBox]["scrollIndex"] != 0:
+                    self.box[self.focusedBox]["scrollIndex"] += 1
 
-            elif char == 339:                   # PAGE UP
-                #self.textBoxScrollIndex -= self.textBoxHeight
-                #if self.textBoxScrollIndex < -(len(self.textBoxLines) - self.textBoxHeight):
-                #    self.textBoxScrollIndex = -(len(self.textBoxLines) - self.textBoxHeight)
-                pass
+            elif char == 339:                   # PAGE UP (Scroll up)
+                self.box[self.focusedBox]["scrollIndex"] -= self.box[self.focusedBox]["textHeight"]
+                if self.box[self.focusedBox]["scrollIndex"] < -(len(self.box[self.focusedBox]["lines"]) - self.box[self.focusedBox]["textHeight"]):
+                    self.box[self.focusedBox]["scrollIndex"] = -(len(self.box[self.focusedBox]["lines"]) - self.box[self.focusedBox]["textHeight"])
 
-            elif char == 338:                   # PAGE DOWN
-                #self.textBoxScrollIndex += self.textBoxHeight
-                #if self.textBoxScrollIndex > 0:
-                #    self.textBoxScrollIndex = 0
-                pass
+            elif char == 338:                   # PAGE DOWN (Scroll down)
+                self.box[self.focusedBox]["scrollIndex"] += self.box[self.focusedBox]["textHeight"]
+                if self.box[self.focusedBox]["scrollIndex"] > 0:
+                    self.box[self.focusedBox]["scrollIndex"] = 0
 
 
             # REGULAR ASCII KEY EVENTS --------------------------------------------------------------------------------
@@ -630,6 +641,7 @@ if __name__ == "__main__":
     #obj.createTextBox("TestBox2", height=10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Up"])
     obj.createTextBox("TestBox1", hOrient=obj.H_ORIENT["Left"], vOrient=obj.V_ORIENT["Down"])
     obj.createTextBox("TestBox3", 15, 10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Up"])
+    obj.set_focus_box("TestBox1")
 
     #obj.createTextBox("Inbetween", 20, 20, vOrient=obj.V_ORIENT["Up"], hPos=1)
     #obj.createTextBox("Jesper", width=20, height=10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Down"])

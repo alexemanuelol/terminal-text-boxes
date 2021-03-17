@@ -14,6 +14,6 @@ A framework for terminal text box functionality used for chat applications, gene
 - Create 'box-sets' to say like "Hey, display this box-set now! Change to "prompt-user box-set"'
 - Put frame_style and text_attr into class again?
 - Fix the freaking slow update of prompt box, do you really have to update every single module?! like wtf man
-- Think of a solution for scroll issue, which box to scroll? How to switch?
 - Scroll icon on the side of the box? Some sort of relation with scrollIndex to indicate where it is
 - Add some sort of indicator which window is active (scrollable)
+- If no boxes are created, crashes will occur if for instance you press PAGE UP, enter, since there are no boxes, add checks?
