@@ -7,6 +7,8 @@ import threading
 
 from textwrap import wrap
 
+from unicode import isUnicode
+
 
 TEXT_ATTR = {
     "AltCharset"    : curses.A_ALTCHARSET,
@@ -130,7 +132,7 @@ class TerminalTextBoxes():
 
         self.debug                  = True
         self.debugBoxPlacementShow  = 0
-        self.debugBoxInfoShow       = 2
+        self.debugBoxInfoShow       = 0
 
         self.update()
 
@@ -483,18 +485,22 @@ class TerminalTextBoxes():
         while True:
             char = self.screen.get_wch()
 
+            self.box["TestBox1"]["textItems"].append([str(repr(char)), curses.color_pair(obj.COLOR["green"])])
+            #print(repr(char))
+
+            # GENERAL KEY EVENTS --------------------------------------------------------------------------------------
             if char == "\x1b":                  # <ESC> KEY (Exit)
                 break
 
-            elif char == 259:                   # <ARROW-UP> KEY (Scroll up)
-                #if len(self.textBoxLines) + self.textBoxScrollIndex > self.textBoxHeight:
-                #    self.textBoxScrollIndex -= 1
+            elif char == "\x00":                # "WINDOWS" KEY
                 pass
 
-            elif char == 258:                   # <ARROW-DOWN> KEY (Scroll down)
-                if self.textBoxScrollIndex != 0:
-                    self.textBoxScrollIndex += 1
+            elif char == curses.KEY_RESIZE:     # RESIZE EVENT
+                self.promptCursorPos = 0
+                self.promptVCursorPos = 0
 
+
+            # PROMPT KEY EVENTS ---------------------------------------------------------------------------------------
             elif char == 260:                   # <ARROW-LEFT> KEY (Scroll left)
                 if self.promptVCursorPos != 0:
                     self.promptVCursorPos -= 1
@@ -507,13 +513,6 @@ class TerminalTextBoxes():
                     self.promptVCursorPos += 1
                 if self.promptCursorPos < len(self.promptString):
                     self.promptCursorPos += 1
-
-            elif char == "\x00":                # WINDOWS KEY
-                pass
-
-            elif char == curses.KEY_RESIZE:     # RESIZE EVENT
-                self.promptCursorPos = 0
-                self.promptVCursorPos = 0
 
             elif char == 262:                   # HOME KEY
                 self.promptVCursorPos = 0
@@ -557,18 +556,6 @@ class TerminalTextBoxes():
                 if self.promptCursorPos != 0:
                     self.promptCursorPos -= 1
 
-            elif char == 339:                   # PAGE UP
-                #self.textBoxScrollIndex -= self.textBoxHeight
-                #if self.textBoxScrollIndex < -(len(self.textBoxLines) - self.textBoxHeight):
-                #    self.textBoxScrollIndex = -(len(self.textBoxLines) - self.textBoxHeight)
-                pass
-
-            elif char == 338:                   # PAGE DOWN
-                #self.textBoxScrollIndex += self.textBoxHeight
-                #if self.textBoxScrollIndex > 0:
-                #    self.textBoxScrollIndex = 0
-                pass
-
             #elif char == "\x16":                # CTRL + V (paste)
             #    try:
             #        copy = self.get_clipboard()
@@ -583,12 +570,39 @@ class TerminalTextBoxes():
             #    except Exception as e:
             #        pass
 
+
+
+            # BOX KEY EVENTS ------------------------------------------------------------------------------------------
+            elif char == 259:                   # <ARROW-UP> KEY (Scroll up)
+                #if len(self.textBoxLines) + self.textBoxScrollIndex > self.textBoxHeight:
+                #    self.textBoxScrollIndex -= 1
+                pass
+
+            elif char == 258:                   # <ARROW-DOWN> KEY (Scroll down)
+                if self.textBoxScrollIndex != 0:
+                    self.textBoxScrollIndex += 1
+
+            elif char == 339:                   # PAGE UP
+                #self.textBoxScrollIndex -= self.textBoxHeight
+                #if self.textBoxScrollIndex < -(len(self.textBoxLines) - self.textBoxHeight):
+                #    self.textBoxScrollIndex = -(len(self.textBoxLines) - self.textBoxHeight)
+                pass
+
+            elif char == 338:                   # PAGE DOWN
+                #self.textBoxScrollIndex += self.textBoxHeight
+                #if self.textBoxScrollIndex > 0:
+                #    self.textBoxScrollIndex = 0
+                pass
+
+
+            # REGULAR ASCII KEY EVENTS --------------------------------------------------------------------------------
             else: # Append characters to self.promptString
-                self.promptString =   self.promptString[:self.promptCursorPos] + str(char) + \
-                    self.promptString[self.promptCursorPos:]
-                if self.promptVCursorPos != self.promptLineWidth:
-                    self.promptVCursorPos += 1
-                self.promptCursorPos += 1
+                if isUnicode(char):
+                    self.promptString =   self.promptString[:self.promptCursorPos] + str(char) + \
+                        self.promptString[self.promptCursorPos:]
+                    if self.promptVCursorPos != self.promptLineWidth:
+                        self.promptVCursorPos += 1
+                    self.promptCursorPos += 1
 
             self.update()
 
@@ -608,24 +622,27 @@ if __name__ == "__main__":
     #obj.createTextBox("Hejsan4", 22, hOrient=obj.H_ORIENT["Right"])
 
     #obj.createTextBox("Hejsan1", 5, hOrient=obj.H_ORIENT["Left"], visable=True)
-    obj.createTextBox("TestBox2", hOrient=obj.H_ORIENT["Right"], wTextIndent=2)
+    #obj.createTextBox("TestBox2", hOrient=obj.H_ORIENT["Right"], wTextIndent=2)
     #obj.createTextBox("Hejsan3", 10, 10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Down"])
     #obj.createTextBox("Hejsan4", hOrient=obj.H_ORIENT["Right"], height=10)
     #obj.createTextBox("Hejsan5", 20, hOrient=obj.H_ORIENT["Right"])
 
     #obj.createTextBox("TestBox2", height=10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Up"])
-    #obj.createTextBox("TestBox1", 15, 10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Down"])
-    #obj.createTextBox("TestBox3", 15, 10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Up"])
+    obj.createTextBox("TestBox1", hOrient=obj.H_ORIENT["Left"], vOrient=obj.V_ORIENT["Down"])
+    obj.createTextBox("TestBox3", 15, 10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Up"])
 
     #obj.createTextBox("Inbetween", 20, 20, vOrient=obj.V_ORIENT["Up"], hPos=1)
+    #obj.createTextBox("Jesper", width=20, height=10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Down"])
 
-    obj.createTextBox("TestBox1", 25, 30, wTextIndent=2, hTextIndent=1)
-    txt = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
-    for a in range(10):
-        obj.box["TestBox1"]["textItems"].append([txt, curses.color_pair(obj.COLOR["green"])])
 
-    for a in range(10):
-        obj.box["TestBox2"]["textItems"].append([txt, curses.color_pair(obj.COLOR["red"])])
+    #obj.createTextBox("TestBox1", 50, 20, wTextIndent=2, hTextIndent=1, hOrient=obj.H_ORIENT["Left"])
+    #obj.createTextBox("William", 30, hOrient=obj.H_ORIENT["Right"])
+    #txt = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+    #for a in range(10):
+    #    obj.box["TestBox1"]["textItems"].append([txt, curses.color_pair(obj.COLOR["green"])])
+
+    #for a in range(10):
+    #    obj.box["TestBox2"]["textItems"].append([txt, curses.color_pair(obj.COLOR["red"])])
 
 
     obj.run()
