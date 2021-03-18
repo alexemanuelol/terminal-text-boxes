@@ -10,42 +10,6 @@ from textwrap import wrap
 from unicode import isUnicode
 
 
-TEXT_ATTR = {
-    "AltCharset"    : curses.A_ALTCHARSET,
-    "Blink"         : curses.A_BLINK,
-    "Bold"          : curses.A_BOLD,
-    "Dim"           : curses.A_DIM,
-    "Invis"         : curses.A_INVIS,
-    "Italic"        : curses.A_ITALIC,
-    "Normal"        : curses.A_NORMAL,
-    "Protect"       : curses.A_PROTECT,
-    "Reverse"       : curses.A_REVERSE,
-    "Standout"      : curses.A_STANDOUT,
-    "Underline"     : curses.A_UNDERLINE,
-    "Horizontal"    : curses.A_HORIZONTAL,
-    "Left"          : curses.A_LEFT,
-    "Low"           : curses.A_LOW,
-    "Right"         : curses.A_RIGHT,
-    "Top"           : curses.A_TOP,
-    "Vertical"      : curses.A_VERTICAL,
-    "Chartext"      : curses.A_CHARTEXT
-}
-
-FRAME_STYLE = {
-    "singleLine"    : ["│", "┤", "├", "─", "┴", "┬", "┘", "┐", "└", "┌", "┼"],
-    "doubleLine"    : ["║", "╣", "╠", "═", "╩", "╦", "╝", "╗", "╚", "╔", "╬"],
-    "hash"          : ["#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#"],
-    "at"            : ["@", "@", "@", "@", "@", "@", "@", "@", "@", "@", "@"],
-    "star"          : ["*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"],
-    "blockFull"     : ["█", "█", "█", "█", "█", "█", "█", "█", "█", "█", "█"],
-    "blockVague0"   : ["▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓"],
-    "blockVague1"   : ["▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒"],
-    "blockVague2"   : ["░", "░", "░", "░", "░", "░", "░", "░", "░", "░", "░"],
-    "invisible"     : [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "]
-}
-
-
-
 class TerminalTextBoxes():
     """  """
     def __init__(self):
@@ -57,34 +21,68 @@ class TerminalTextBoxes():
         curses.start_color()
         curses.use_default_colors()
 
-        # Color variables
-        self.COLOR = {
-            "black"     : 1,
-            "blue"      : 2,
-            "green"     : 3,
-            "cyan"      : 4,
-            "red"       : 5,
-            "magenta"   : 6,
-            "yellow"    : 7,
-            "white"     : 8
+        # Text color/ attribute variables
+        self.TEXT_COLOR = {
+            "black"                 : 1,
+            "blue"                  : 2,
+            "green"                 : 3,
+            "cyan"                  : 4,
+            "red"                   : 5,
+            "magenta"               : 6,
+            "yellow"                : 7,
+            "white"                 : 8
         }
-        for color, value in self.COLOR.items():
+        for color, value in self.TEXT_COLOR.items():
             curses.init_pair(value, value - 1, -1)
 
+        self.TEXT_ATTR = {
+            "altCharset"            : curses.A_ALTCHARSET,
+            "blink"                 : curses.A_BLINK,
+            "bold"                  : curses.A_BOLD,
+            "dim"                   : curses.A_DIM,
+            "invis"                 : curses.A_INVIS,
+            "italic"                : curses.A_ITALIC,
+            "normal"                : curses.A_NORMAL,
+            "protect"               : curses.A_PROTECT,
+            "reverse"               : curses.A_REVERSE,
+            "standout"              : curses.A_STANDOUT,
+            "underline"             : curses.A_UNDERLINE,
+            "horizontal"            : curses.A_HORIZONTAL,
+            "left"                  : curses.A_LEFT,
+            "low"                   : curses.A_LOW,
+            "right"                 : curses.A_RIGHT,
+            "top"                   : curses.A_TOP,
+            "vertical"              : curses.A_VERTICAL,
+            "chartext"              : curses.A_CHARTEXT
+        }
+
         # Frame variables
+        self.FRAME_STYLE = {
+            "singleLine"            : ["│", "┤", "├", "─", "┴", "┬", "┘", "┐", "└", "┌", "┼"],
+            "doubleLine"            : ["║", "╣", "╠", "═", "╩", "╦", "╝", "╗", "╚", "╔", "╬"],
+            "hash"                  : ["#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#"],
+            "at"                    : ["@", "@", "@", "@", "@", "@", "@", "@", "@", "@", "@"],
+            "star"                  : ["*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"],
+            "blockFull"             : ["█", "█", "█", "█", "█", "█", "█", "█", "█", "█", "█"],
+            "blockVague0"           : ["▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓"],
+            "blockVague1"           : ["▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒"],
+            "blockVague2"           : ["░", "░", "░", "░", "░", "░", "░", "░", "░", "░", "░"],
+            "invisible"             : [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "]
+        }
+
         self.FRAME_SIZE = 1
         self.frame = {
-            "vertical"          : FRAME_STYLE["singleLine"][0],
-            "verticalLeft"      : FRAME_STYLE["singleLine"][1],
-            "verticalRight"     : FRAME_STYLE["singleLine"][2],
-            "horizontal"        : FRAME_STYLE["singleLine"][3],
-            "horizontalUp"      : FRAME_STYLE["singleLine"][4],
-            "horizontalDown"    : FRAME_STYLE["singleLine"][5],
-            "leftUp"            : FRAME_STYLE["singleLine"][6],
-            "leftDown"          : FRAME_STYLE["singleLine"][7],
-            "rightUp"           : FRAME_STYLE["singleLine"][8],
-            "rightDown"         : FRAME_STYLE["singleLine"][9],
-            "cross"             : FRAME_STYLE["singleLine"][10]
+            "vertical"              : self.FRAME_STYLE["singleLine"][0],
+            "verticalLeft"          : self.FRAME_STYLE["singleLine"][1],
+            "verticalRight"         : self.FRAME_STYLE["singleLine"][2],
+            "horizontal"            : self.FRAME_STYLE["singleLine"][3],
+            "horizontalUp"          : self.FRAME_STYLE["singleLine"][4],
+            "horizontalDown"        : self.FRAME_STYLE["singleLine"][5],
+            "leftUp"                : self.FRAME_STYLE["singleLine"][6],
+            "leftDown"              : self.FRAME_STYLE["singleLine"][7],
+            "rightUp"               : self.FRAME_STYLE["singleLine"][8],
+            "rightDown"             : self.FRAME_STYLE["singleLine"][9],
+            "cross"                 : self.FRAME_STYLE["singleLine"][10]
         }
 
         # Prompt variables
@@ -104,6 +102,12 @@ class TerminalTextBoxes():
         self.boxOrder               = list()
         self.focusedBox             = None
 
+        # wrap if the text item can wrap, single if text item only should be displayed on a single line
+        self.LINE_TYPE = {
+            "wrap"                  : 0,
+            "single"                : 1
+        }
+
         # Minimum sizes
         self.PROMPT_MIN_WIDTH       = self.promptSignSize + 10
         self.PROMPT_MIN_HEIGHT      = 1
@@ -112,23 +116,23 @@ class TerminalTextBoxes():
 
         # Orientations
         self.H_ORIENT = {
-            "Left"          : 0,
-            "Right"         : 1
+            "Left"                  : 0,
+            "Right"                 : 1
         }
         self.V_ORIENT = {
-            "Up"            : 0,
-            "Down"          : 1
+            "Up"                    : 0,
+            "Down"                  : 1
         }
 
         # Debug variables
         self.debugBoxPlacement = {
-            "Top"           : 0,
-            "Bottom"        : 1
+            "Top"                   : 0,
+            "Bottom"                : 1
         }
         self.debugBoxInfo = {
-            "name"          : 0,
-            "textSize"      : 1,
-            "boxSize"       : 2
+            "name"                  : 0,
+            "textSize"              : 1,
+            "boxSize"               : 2
         }
 
         self.debug                  = True
@@ -287,10 +291,13 @@ class TerminalTextBoxes():
         """ Update text format by re-wrapping text to match new box sizes """
         for name, attr in self.box.items():
             self.box[name]["lines"] = list()
-            for item, color in attr["textItems"]:
-                lines = wrap(item, attr["textWidth"])
-                for line in lines:
-                    self.box[name]["lines"].append([line, color])
+            for item, txtAttr, lineType in attr["textItems"]:
+                if lineType == self.LINE_TYPE["single"]:
+                    self.box[name]["lines"].append([item[:attr["textWidth"]], txtAttr])
+                else:
+                    lines = wrap(item, attr["textWidth"])
+                    for line in lines:
+                        self.box[name]["lines"].append([line, txtAttr])
 
 
     def update_box_frames(self):
@@ -483,6 +490,42 @@ class TerminalTextBoxes():
         self.box[name]["scrollIndex"] = 0
 
 
+    def add_text_item(self, name, message, attributes="white", lineType="wrap"):
+        """ Add a text item to the textItems list of messages. """
+        if name not in self.box:
+            raise Exception(f"Box {name} is not in self.box dictonary.")
+
+        attributes = self.merge_attributes(attributes)
+
+        if lineType not in self.LINE_TYPE:
+            raise Exception(f"Line type {lineType} does not exist.")
+
+        self.box[name]["textItems"].append([message, attributes, self.LINE_TYPE[lineType]])
+
+
+    def merge_attributes(self, attributes):
+        """ Merges all attribute values to a single attribute and returns it. Raises exception if invalid attribute exist. """
+        if attributes == None:
+            return None
+
+        if isinstance(attributes, list) or isinstance(attributes, str):
+            if isinstance(attributes, str):
+                attributes = [attributes]
+        else:
+            raise Exception("Attributes needs to be either string or list.")
+
+        merged = 0
+        for item in attributes:
+            if item in self.TEXT_COLOR:
+                merged = merged | curses.color_pair(self.TEXT_COLOR[item])
+            elif item in self.TEXT_ATTR:
+                merged = merged | self.TEXT_ATTR[item]
+            else:
+                raise Exception(f"Attribute {item} is not available.")
+
+        return merged
+
+
     def set_focus_box(self, name):
         """ Set a box in focus i.e. make it scrollable. """
         if name not in self.box:
@@ -538,9 +581,7 @@ class TerminalTextBoxes():
 
             elif char == "\n": # <ENTER>
                 if self.promptString != "":
-                    self.box["TestBox1"]["textItems"].append([self.promptString, curses.color_pair(obj.COLOR["green"])])
-                    #self.textBoxMessages.append([self.promptString,
-                    #    curses.color_pair(self.COLOR["white"]) | curses.A_STANDOUT])
+                    self.add_text_item("TestBox1", self.promptString, ["red", "bold", "standout"], lineType="single")
                 self.promptString = ""
                 self.promptCursorPos = 0
                 self.promptVCursorPos = 0
@@ -640,7 +681,7 @@ if __name__ == "__main__":
 
     #obj.createTextBox("TestBox2", height=10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Up"])
     obj.createTextBox("TestBox1", hOrient=obj.H_ORIENT["Left"], vOrient=obj.V_ORIENT["Down"])
-    obj.createTextBox("TestBox3", 15, 10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Up"])
+    obj.createTextBox("TestBox3", 15, 20, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Up"])
     obj.set_focus_box("TestBox1")
 
     #obj.createTextBox("Inbetween", 20, 20, vOrient=obj.V_ORIENT["Up"], hPos=1)
