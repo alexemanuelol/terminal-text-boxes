@@ -6,6 +6,7 @@ import time
 import threading
 
 from textwrap import wrap
+from pynput.keyboard import Key, Controller
 
 from unicode import isUnicode
 
@@ -14,12 +15,7 @@ class TerminalTextBoxes():
     """  """
     def __init__(self):
         """ Init. """
-        # Terminal window initialization
-        self.screen = curses.initscr()
-        self.screen.keypad(True)
-        curses.noecho()
-        curses.start_color()
-        curses.use_default_colors()
+        self.fakeKeyboard = Controller()
 
         # Text color/ attribute variables
         self.TEXT_COLOR = {
@@ -32,8 +28,6 @@ class TerminalTextBoxes():
             "yellow"                : 7,
             "white"                 : 8
         }
-        for color, value in self.TEXT_COLOR.items():
-            curses.init_pair(value, value - 1, -1)
 
         self.TEXT_ATTR = {
             "altCharset"            : curses.A_ALTCHARSET,
@@ -139,16 +133,35 @@ class TerminalTextBoxes():
         self.debugBoxPlacementShow  = 0
         self.debugBoxInfoShow       = 0
 
-        self.update()
 
+    def start(self):
+        """ Start displaying the terminal text boxes module. """
+        # Terminal window initialization
+        self.screen = curses.initscr()
+        self.screen.keypad(True)
+        curses.noecho()
 
-    def run(self):
-        """ The main function call. """
+        self.init_colors()
+
         self.update()
 
         event = threading.Event()
         thread = threading.Thread(target=self.__key_handler, args=(event,))
         thread.start()
+
+
+    def stop(self):
+        """ Stop displaying the terminal text boxes module. """
+        self.fakeKeyboard.press(Key.esc)
+
+
+    def init_colors(self):
+        """ Init curses colors. """
+        curses.start_color()
+        curses.use_default_colors()
+
+        for color, value in self.TEXT_COLOR.items():
+            curses.init_pair(value, value - 1, -1)
 
 
     def update(self):
@@ -579,16 +592,6 @@ class TerminalTextBoxes():
                     self.promptVCursorPos = len(self.promptString)
                 self.promptCursorPos = len(self.promptString)
 
-            elif char == "\n": # <ENTER>
-                if self.promptString != "":
-                    self.add_text_item("TestBox1", self.promptString, ["red", "bold", "standout"], lineType="single")
-                self.promptString = ""
-                self.promptCursorPos = 0
-                self.promptVCursorPos = 0
-                #self.textBoxScrollIndex = 0
-                #TEMP:
-                self.box[self.focusedBox]["scrollIndex"] = 0
-
             elif char == 330:                   # DELETE KEY
                 self.promptString = self.promptString[:self.promptCursorPos] + \
                     self.promptString[self.promptCursorPos:][1:]
@@ -624,6 +627,16 @@ class TerminalTextBoxes():
 
             #    except Exception as e:
             #        pass
+
+            elif char == "\n": # <ENTER>
+                if self.promptString != "":
+                    self.add_text_item("TestBox1", self.promptString, ["red", "bold", "standout"], lineType="single")
+                self.promptString = ""
+                self.promptCursorPos = 0
+                self.promptVCursorPos = 0
+                #self.textBoxScrollIndex = 0
+                #TEMP:
+                self.box[self.focusedBox]["scrollIndex"] = 0
 
 
 
@@ -684,6 +697,7 @@ if __name__ == "__main__":
     obj.createTextBox("TestBox3", 15, 20, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Up"])
     obj.set_focus_box("TestBox1")
 
+
     #obj.createTextBox("Inbetween", 20, 20, vOrient=obj.V_ORIENT["Up"], hPos=1)
     #obj.createTextBox("Jesper", width=20, height=10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Down"])
 
@@ -698,7 +712,7 @@ if __name__ == "__main__":
     #    obj.box["TestBox2"]["textItems"].append([txt, curses.color_pair(obj.COLOR["red"])])
 
 
-    obj.run()
+    obj.start()
 
 
 # CALLBACK SOLUTION
