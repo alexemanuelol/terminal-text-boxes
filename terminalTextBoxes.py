@@ -13,9 +13,12 @@ from unicode import isUnicode
 
 class TerminalTextBoxes():
     """  """
-    def __init__(self):
+    def __init__(self, callback):
         """ Init. """
         self.fakeKeyboard = Controller()
+
+        # Prompt callback function
+        self.promptCallbackFunction = callback
 
         # Text color/ attribute variables
         self.TEXT_COLOR = {
@@ -204,7 +207,7 @@ class TerminalTextBoxes():
         # Update box variables (box sizes)
         self.update_box_variables(False)
 
-        if self.updateConditionsSatisfied:
+        if self.updateConditionsSatisfied and self.resizeDone:
             # Update text format by re-wrapping text to match new box sizes
             self.update_text_wrapping()
 
@@ -807,12 +810,10 @@ class TerminalTextBoxes():
 
             elif char == "\n": # <ENTER>
                 if self.promptString != "":
-                    self.add_text_item("setup", "box", self.promptString, ["blue", "bold"], lineType="wrap")
-                self.set_info_prompt_message(self.promptString, 5000)
+                    self.promptCallbackFunction(self.promptString)
                 self.promptString = ""
                 self.promptCursorPos = 0
                 self.promptVCursorPos = 0
-                #TEMP:
                 self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = 0
 
 
@@ -857,8 +858,7 @@ class TerminalTextBoxes():
                     self.update_visual_cursor()
                     continue
 
-            if self.resizeDone:
-                self.update()
+            self.update()
 
         curses.endwin() # Close curses terminal
 
@@ -871,33 +871,28 @@ class TerminalTextBoxes():
 
 
 
+
+
+
+class TestTextBox():
+    """  """
+
+    def __init__(self):
+        """  """
+        self.tb = TerminalTextBoxes(self.test_callback)
+        self.tb.create_text_box_setup("setup")
+
+        self.tb.create_text_box("setup", "text", frameAttr="green")
+        self.tb.create_text_box("setup", "info", 20, frameAttr="red", hOrient=self.tb.H_ORIENT["Right"])
+
+        self.tb.set_focus_box("setup", "text")
+
+        self.tb.start()
+
+    def test_callback(self, message):
+        """  """
+        self.tb.add_text_item("setup", "text", message, attributes=["yellow", "bold"])
+
+
 if __name__ == "__main__":
-    obj = TerminalTextBoxes()
-
-    obj.create_text_box_setup("setup")
-    obj.create_text_box("setup", "box", frameAttr="red")
-    obj.create_text_box("setup", "box1", 20, 20, hOrient=obj.H_ORIENT["Right"], frameAttr="green")
-    obj.set_focus_box("setup", "box")
-
-    obj.set_box_frame_attr("setup", "box", "cyan")
-
-
-    obj.create_text_box_setup("setup2")
-    obj.create_text_box("setup2", "box2")
-
-    obj.set_active_box_setup("setup")
-
-    obj.start()
-
-
-# CALLBACK SOLUTION
-
-#def callback(sum):
-#    print("Sum = {}".format(sum))
-#
-#def main(a, b, _callback = None):
-#    print("adding {} + {}".format(a, b))
-#    if _callback:
-#        _callback(a+b)
-#
-#main(1, 2, callback)
+    ttb = TestTextBox()
