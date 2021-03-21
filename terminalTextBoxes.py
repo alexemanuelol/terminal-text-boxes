@@ -29,6 +29,7 @@ class TerminalTextBoxes():
             "white"                 : 8
         }
 
+        # Text attributes
         self.TEXT_ATTR = {
             "altCharset"            : curses.A_ALTCHARSET,
             "blink"                 : curses.A_BLINK,
@@ -79,6 +80,10 @@ class TerminalTextBoxes():
             "cross"                 : self.FRAME_STYLE["singleLine"][10]
         }
 
+        # Terminal Box Setups
+        self.boxSetup               = dict()
+        self.activeBoxSetup         = None
+
         # Prompt variables
         self.promptSign             = "> "
         self.promptSignSize         = len(self.promptSign)
@@ -90,11 +95,6 @@ class TerminalTextBoxes():
         self.promptVCursorPos       = 0
         self.promptVLeftPos         = 0
         self.promptVRightPos        = 0
-
-        # Box variables
-        self.box                    = dict()
-        self.boxOrder               = list()
-        self.focusedBox             = None
 
         # wrap if the text item can wrap, single if text item only should be displayed on a single line
         self.LINE_TYPE = {
@@ -219,11 +219,11 @@ class TerminalTextBoxes():
         if updateTerminal:
             self.hTerminal, self.wTerminal = self.screen.getmaxyx() # Get the terminal size
 
-        nbrOfBoxes = len(self.box)  # Total amount of current boxes
+        nbrOfBoxes = len(self.boxSetup[self.activeBoxSetup]["boxes"]) # Total amount of current boxes
         nbrOfWUnfixedBoxes = 0      # Number of boxes that does not have fixed width
         nbrOfWFixedBoxes = 0        # Number of boxes that does have fixed width
         wForFixed = 0               # Width of all fixed width boxes together
-        for name, attr in self.box.items():
+        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
             if attr["fixedWidth"] == None:
                 nbrOfWUnfixedBoxes = nbrOfWUnfixedBoxes + 1
             else:
@@ -251,7 +251,7 @@ class TerminalTextBoxes():
         wForUnusedUsed = False
         hForUnusedUsed = False
         prevVerticalOrientation = None
-        for name, attr in self.box.items():
+        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
             # Box Width/ Height
             if attr["fixedWidth"] == None:
                 attr["boxWidth"] = (wForUnfixed // nbrOfWUnfixedBoxes) + (1 if remainingUnevenWidth > 0 else 0)
@@ -302,20 +302,21 @@ class TerminalTextBoxes():
 
     def update_text_wrapping(self):
         """ Update text format by re-wrapping text to match new box sizes """
-        for name, attr in self.box.items():
-            self.box[name]["lines"] = list()
+        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+            self.boxSetup[self.activeBoxSetup]["boxes"][name]["lines"] = list()
             for item, txtAttr, lineType in attr["textItems"]:
                 if lineType == self.LINE_TYPE["single"]:
-                    self.box[name]["lines"].append([item[:attr["textWidth"]], txtAttr])
+                    self.boxSetup[self.activeBoxSetup]["boxes"][name]["lines"].append(
+                            [item[:attr["textWidth"]], txtAttr])
                 else:
                     lines = wrap(item, attr["textWidth"])
                     for line in lines:
-                        self.box[name]["lines"].append([line, txtAttr])
+                        self.boxSetup[self.activeBoxSetup]["boxes"][name]["lines"].append([line, txtAttr])
 
 
     def update_box_frames(self):
         """ Updates the frames for all the boxes as well as the bottom line that separate input bar from boxes. """
-        for name, attr in self.box.items():
+        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
             if attr["visable"] == False:
                 continue
 
@@ -377,7 +378,6 @@ class TerminalTextBoxes():
             self.wTerminal * self.frame["horizontal"])
 
 
-
     def update_prompt(self):
         """ Update the prompt. """
         self.promptVLeftPos = self.promptCursorPos - self.promptVCursorPos
@@ -393,7 +393,7 @@ class TerminalTextBoxes():
 
     def update_boxes(self):
         """ Updates all the boxes. """
-        for name, attr in self.box.items():
+        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
             displayedText = list()
             if len(attr["lines"]) >= attr["textHeight"]:
                 displayedText = attr["lines"][-attr["textHeight"] + attr["scrollIndex"]:][:attr["textHeight"]]
@@ -409,11 +409,28 @@ class TerminalTextBoxes():
         self.screen.move(self.hTerminal - self.promptHeight, self.promptVCursorPos + len(self.promptSign))
 
 
-    def createTextBox(self, name, width = None, height = None, hPos = None, vPos = 0, hOrient = 0, vOrient = 0,
-                      visable = True, wTextIndent = 0, hTextIndent = 0):
+    def create_text_box_setup(self, name):
+        """ Creates a new 'text box setup' in which you can add text boxes to. """
+        if not isinstance(name, str):
+            raise Exception("name is not of string type.")
+        if name in self.boxSetup:
+            raise Exception(f"TextBoxSetup {name} already exists.")
+
+        self.boxSetup[name] = {}
+
+        self.boxSetup[name]["boxes"] = dict()
+        self.boxSetup[name]["boxOrder"] = list()
+        self.boxSetup[name]["focusedBox"] = None
+
+        self.activeBoxSetup = name
+
+
+    def create_text_box(self, setupName, boxName, width = None, height = None, hPos = None, vPos = 0, hOrient = 0,
+                        vOrient = 0, visable = True, wTextIndent = 0, hTextIndent = 0):
         """
             Input parameters:
-                name                - Name of the textbox.
+                setupName           - Name of the box setup that the box belongs to.
+                boxName             - Name of the textbox.
                 width               - None if not fixed width (becomes textWidth).          Default: None
                 height              - None if not fixed height (becomes textHeight).        Default: None
                 hPos                - Position between already existing boxes horizontally. Default: None
@@ -448,76 +465,91 @@ class TerminalTextBoxes():
                 lines               - List of formatted textItems that is splitted to fit the text box width.
                 scrollIndex         - Scroll index that keeps track of how much text in box have been scrolled.
         """
-        if not isinstance(name, str):
+        if not isinstance(setupName, str):
+            raise Exception("setupName is not of string type.")
+        if setupName not in self.boxSetup:
+            raise Exception(f"Box setup {name} does not exist.")
+
+        if not isinstance(boxName, str):
             raise Exception("name is not of string type.")
-        if name in self.box:
-            raise Exception(f"TextBox {name} already exists.")
+        if boxName in self.boxSetup[setupName]["boxes"]:
+            raise Exception(f"TextBox {boxName} already exists.")
 
-        self.box[name] = dict()
-
-        self.focusedBox = name
+        self.boxSetup[setupName]["boxes"][boxName] = dict()
+        self.boxSetup[setupName]["focusedBox"] = boxName
 
         if width != None and not isinstance(width, int):
             raise Exception("width is not of integer type.")
-        self.box[name]["fixedWidth"] = width
+        self.boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = width
         if height != None and not isinstance(height, int):
             raise Exception("height is not of integer type.")
-        self.box[name]["fixedHeight"] = height
+        self.boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = height
 
         if not isinstance(hOrient, int) or hOrient not in self.H_ORIENT.values():
             raise Exception("hOrient is not of integer type or not within acceptable range.")
-        self.box[name]["hOrient"] = hOrient
+        self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = hOrient
 
         if not isinstance(vOrient, int) or vOrient not in self.V_ORIENT.values():
             raise Exception("vOrient is not of integer type or not within acceptable range.")
-        self.box[name]["vOrient"] = vOrient
+        self.boxSetup[setupName]["boxes"][boxName]["vOrient"] = vOrient
 
         if hPos != None:
             if not isinstance(hPos, int):
                 raise Exception("hPos is not of integer type")
-            self.boxOrder.insert(hPos, name)
-            prevBoxIndex = (self.boxOrder.index(name) - 1) if self.boxOrder.index(name) > 0 else 0
-            self.box[name]["hOrient"] = self.box[self.boxOrder[prevBoxIndex]]["hOrient"]
+            self.boxSetup[setupName]["boxOrder"].insert(hPos, boxName)
+
+            if self.boxSetup[setupName]["boxOrder"].index(boxName) > 0:
+                prevBoxIndex = self.boxSetup[setupName]["boxOrder"].index(boxName) - 1
+            else:
+                prevBoxIndex = 0
+
+            self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = \
+                    self.boxSetup[setupName]["boxes"][self.boxSetup[setupName]["boxOrder"][prevBoxIndex]]["hOrient"]
+
             # TODO: fix vPos as well, check how big list is? (How deep vertical is)
         elif hOrient == self.H_ORIENT["Left"]:
-            self.boxOrder.insert(0, name)
+            self.boxSetup[setupName]["boxOrder"].insert(0, boxName)
         elif hOrient == self.H_ORIENT["Right"]:
-            self.boxOrder.append(name)
+            self.boxSetup[setupName]["boxOrder"].append(boxName)
         else:
-            self.boxOrder.append(name)
-        self.box = {key : self.box[key] for key in self.boxOrder} # Sort dict according to boxOrder
+            self.boxSetup[setupName]["boxOrder"].append(boxName)
+        # Sort dict according to boxOrder
+        self.boxSetup[setupName]["boxes"] = \
+                {key : self.boxSetup[setupName]["boxes"][key] for key in self.boxSetup[setupName]["boxOrder"]}
 
         if visable != True and visable != False:
             raise Exception("visable not a boolean.")
-        self.box[name]["visable"] = visable
+        self.boxSetup[setupName]["boxes"][boxName]["visable"] = visable
 
         if  not isinstance(wTextIndent, int):
             raise Exception("wTextIndent is not of integer type.")
-        self.box[name]["wTextIndent"] = wTextIndent
+        self.boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = wTextIndent
         if not isinstance(hTextIndent, int):
             raise Exception("hTextIndent is not of integer type.")
-        self.box[name]["hTextIndent"] = hTextIndent
+        self.boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = hTextIndent
 
-        self.box[name]["textItems"] = list()
-        self.box[name]["lines"] = list
-        self.box[name]["scrollIndex"] = 0
+        self.boxSetup[setupName]["boxes"][boxName]["textItems"] = list()
+        self.boxSetup[setupName]["boxes"][boxName]["lines"] = list()
+        self.boxSetup[setupName]["boxes"][boxName]["scrollIndex"] = 0
 
 
-    def add_text_item(self, name, message, attributes="white", lineType="wrap"):
+    def add_text_item(self, setupName, boxName, message, attributes="white", lineType="wrap"):
         """ Add a text item to the textItems list of messages. """
-        if name not in self.box:
-            raise Exception(f"Box {name} is not in self.box dictonary.")
+        if boxName not in self.boxSetup[setupName]["boxes"]:
+            raise Exception(f"Box {boxName} is not in box setup {setupName} dictonary.")
 
         attributes = self.merge_attributes(attributes)
 
         if lineType not in self.LINE_TYPE:
             raise Exception(f"Line type {lineType} does not exist.")
 
-        self.box[name]["textItems"].append([message, attributes, self.LINE_TYPE[lineType]])
+        self.boxSetup[setupName]["boxes"][boxName]["textItems"].append([message, attributes, self.LINE_TYPE[lineType]])
 
 
     def merge_attributes(self, attributes):
-        """ Merges all attribute values to a single attribute and returns it. Raises exception if invalid attribute exist. """
+        """ Merges all attribute values to a single attribute and returns it.
+            Raises exception if invalid attribute exist.
+        """
         if attributes == None:
             return None
 
@@ -539,12 +571,20 @@ class TerminalTextBoxes():
         return merged
 
 
-    def set_focus_box(self, name):
+    def set_focus_box(self, setupName, boxName):
         """ Set a box in focus i.e. make it scrollable. """
-        if name not in self.box:
-            raise Exception(f"Box {name} is not in self.box dictonary.")
+        if boxName not in self.boxSetup[setupName]["boxes"]:
+            raise Exception(f"Box {boxName} is not in box setup {setupName} dictonary.")
 
-        self.focusedBox = name
+        self.boxSetup[setupName]["focusedBox"] = boxName
+
+
+    def set_active_box_setup(self, setupName):
+        """  """
+        if setupName not in self.boxSetup:
+            raise Exception(f"Setup {setupName} does not exist in boxSetup dictonary.")
+
+        self.activeBoxSetup = setupName
 
 
     def __key_handler(self, event):
@@ -552,8 +592,7 @@ class TerminalTextBoxes():
         while True:
             char = self.screen.get_wch()
 
-            #self.box["TestBox1"]["textItems"].append([str(repr(char)), curses.color_pair(obj.COLOR["green"])])
-            #print(repr(char))
+            focusedBox = self.boxSetup[self.activeBoxSetup]["focusedBox"]
 
             # GENERAL KEY EVENTS --------------------------------------------------------------------------------------
             if char == "\x1b":                  # <ESC> KEY (Exit)
@@ -630,34 +669,39 @@ class TerminalTextBoxes():
 
             elif char == "\n": # <ENTER>
                 if self.promptString != "":
-                    self.add_text_item("TestBox1", self.promptString, ["red", "bold", "standout"], lineType="single")
+                    self.add_text_item("setup", "box", self.promptString, ["red", "bold"], lineType="wrap")
                 self.promptString = ""
                 self.promptCursorPos = 0
                 self.promptVCursorPos = 0
-                #self.textBoxScrollIndex = 0
                 #TEMP:
-                self.box[self.focusedBox]["scrollIndex"] = 0
-
+                self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = 0
 
 
             # BOX KEY EVENTS ------------------------------------------------------------------------------------------
             elif char == 259:                   # <ARROW-UP> KEY (Scroll up)
-                if len(self.box[self.focusedBox]["lines"]) + self.box[self.focusedBox]["scrollIndex"] > self.box[self.focusedBox]["textHeight"]:
-                    self.box[self.focusedBox]["scrollIndex"] -= 1
+                lines = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["lines"]
+                scrollIndex = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"]
+                textHeight = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["textHeight"]
+                if len(lines) + scrollIndex > textHeight:
+                    self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] -= 1
 
             elif char == 258:                   # <ARROW-DOWN> KEY (Scroll down)
-                if self.box[self.focusedBox]["scrollIndex"] != 0:
-                    self.box[self.focusedBox]["scrollIndex"] += 1
+                if self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] != 0:
+                    self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] += 1
 
             elif char == 339:                   # PAGE UP (Scroll up)
-                self.box[self.focusedBox]["scrollIndex"] -= self.box[self.focusedBox]["textHeight"]
-                if self.box[self.focusedBox]["scrollIndex"] < -(len(self.box[self.focusedBox]["lines"]) - self.box[self.focusedBox]["textHeight"]):
-                    self.box[self.focusedBox]["scrollIndex"] = -(len(self.box[self.focusedBox]["lines"]) - self.box[self.focusedBox]["textHeight"])
+                lines = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["lines"]
+                textHeight = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["textHeight"]
+                self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] -= textHeight
+                scrollIndex = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"]
+                if scrollIndex < -(len(lines) - textHeight):
+                    self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = -(len(lines) - textHeight)
 
             elif char == 338:                   # PAGE DOWN (Scroll down)
-                self.box[self.focusedBox]["scrollIndex"] += self.box[self.focusedBox]["textHeight"]
-                if self.box[self.focusedBox]["scrollIndex"] > 0:
-                    self.box[self.focusedBox]["scrollIndex"] = 0
+                textHeight = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["textHeight"]
+                self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] += textHeight
+                if self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] > 0:
+                    self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = 0
 
 
             # REGULAR ASCII KEY EVENTS --------------------------------------------------------------------------------
@@ -681,36 +725,16 @@ class TerminalTextBoxes():
 if __name__ == "__main__":
     obj = TerminalTextBoxes()
 
-    #obj.createTextBox("HejsanHejsanHejsanHejsanHejsan")
-    #obj.createTextBox("Hejsan1", 20, visable=False)
-    #obj.createTextBox("123456789012345678901234567890", 10, verticalOrientation=obj.VERTICAL_ORIENTATION["Left"])
-    #obj.createTextBox("Hejsan4", 22, hOrient=obj.H_ORIENT["Right"])
-
-    #obj.createTextBox("Hejsan1", 5, hOrient=obj.H_ORIENT["Left"], visable=True)
-    #obj.createTextBox("TestBox2", hOrient=obj.H_ORIENT["Right"], wTextIndent=2)
-    #obj.createTextBox("Hejsan3", 10, 10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Down"])
-    #obj.createTextBox("Hejsan4", hOrient=obj.H_ORIENT["Right"], height=10)
-    #obj.createTextBox("Hejsan5", 20, hOrient=obj.H_ORIENT["Right"])
-
-    #obj.createTextBox("TestBox2", height=10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Up"])
-    obj.createTextBox("TestBox1", hOrient=obj.H_ORIENT["Left"], vOrient=obj.V_ORIENT["Down"])
-    obj.createTextBox("TestBox3", 15, 20, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Up"])
-    obj.set_focus_box("TestBox1")
+    obj.create_text_box_setup("setup")
+    obj.create_text_box("setup", "box")
+    obj.create_text_box("setup", "box1", 20, 20, hOrient=obj.H_ORIENT["Right"])
+    obj.set_focus_box("setup", "box")
 
 
-    #obj.createTextBox("Inbetween", 20, 20, vOrient=obj.V_ORIENT["Up"], hPos=1)
-    #obj.createTextBox("Jesper", width=20, height=10, hOrient=obj.H_ORIENT["Right"], vOrient=obj.V_ORIENT["Down"])
+    obj.create_text_box_setup("setup2")
+    obj.create_text_box("setup2", "box2")
 
-
-    #obj.createTextBox("TestBox1", 50, 20, wTextIndent=2, hTextIndent=1, hOrient=obj.H_ORIENT["Left"])
-    #obj.createTextBox("William", 30, hOrient=obj.H_ORIENT["Right"])
-    #txt = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
-    #for a in range(10):
-    #    obj.box["TestBox1"]["textItems"].append([txt, curses.color_pair(obj.COLOR["green"])])
-
-    #for a in range(10):
-    #    obj.box["TestBox2"]["textItems"].append([txt, curses.color_pair(obj.COLOR["red"])])
-
+    obj.set_active_box_setup("setup")
 
     obj.start()
 

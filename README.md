@@ -8,7 +8,6 @@ A framework for terminal text box functionality used for chat applications, gene
 - Add "isChanged" as box variable to say if the box size is changed
 - Add a 'info box' above prompt? to display information
 - FIX EDGE CONDITIONS
-- Create 'box-sets' to say like "Hey, display this box-set now! Change to "prompt-user box-set"'
 - Fix the freaking slow update of prompt box, do you really have to update every single module?! like wtf man
 - Scroll icon on the side of the box? Some sort of relation with scrollIndex to indicate where it is
 - Add some sort of indicator which window is active (scrollable)
