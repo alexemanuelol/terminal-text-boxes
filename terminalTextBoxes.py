@@ -143,6 +143,8 @@ class TerminalTextBoxes():
 
         self.init_colors()
 
+        self.update_boxes_frame_attr()
+
         self.update()
 
         event = threading.Event()
@@ -162,6 +164,13 @@ class TerminalTextBoxes():
 
         for color, value in self.TEXT_COLOR.items():
             curses.init_pair(value, value - 1, -1)
+
+
+    def update_boxes_frame_attr(self):
+        """  """
+        for setupName, setupAttr in self.boxSetup.items():
+            for boxName, boxAttr in setupAttr["boxes"].items():
+                boxAttr["frameAttr"] = self.merge_attributes(boxAttr["frameAttrUnmerged"])
 
 
     def update(self):
@@ -324,43 +333,47 @@ class TerminalTextBoxes():
             boxTLY = attr["topLeft"]["y"]
             boxBRX = attr["bottomRight"]["x"]
             boxBRY = attr["bottomRight"]["y"]
+
+            if name == self.boxSetup[self.activeBoxSetup]["focusedBox"] and self.debug:
+                self.screen.addstr(boxTLY + 1, boxBRX - 1, "*", curses.color_pair(self.TEXT_COLOR["red"]))
+
             for row in range(self.hTerminal):
                 for column in range(self.wTerminal):
                     # DEBUG BOX ON THE TOP OF EVERY BOX
                     if (boxTLY + 2) == row and boxTLX == column and self.debug and \
                             self.debugBoxPlacementShow == self.debugBoxPlacement["Top"]:
-                        self.screen.addstr(row, column, self.frame["verticalRight"])
+                        self.screen.addstr(row, column, self.frame["verticalRight"], attr["frameAttr"])
                     elif (boxTLY + 2) == row and boxBRX == column and self.debug and \
                             self.debugBoxPlacementShow == self.debugBoxPlacement["Top"]:
-                        self.screen.addstr(row, column, self.frame["verticalLeft"])
+                        self.screen.addstr(row, column, self.frame["verticalLeft"], attr["frameAttr"])
                     elif (boxTLY + 2) == row and boxTLX < column and boxBRX > column and self.debug and \
                             self.debugBoxPlacementShow == self.debugBoxPlacement["Top"]:
-                        self.screen.addstr(row, column, self.frame["horizontal"])
+                        self.screen.addstr(row, column, self.frame["horizontal"], attr["frameAttr"])
 
                     # DEBUG BOX ON THE BOTTOM OF EVERY BOX
                     elif (boxBRY - 2) == row and boxTLX == column and self.debug and \
                             self.debugBoxPlacementShow == self.debugBoxPlacement["Bottom"]:
-                        self.screen.addstr(row, column, self.frame["verticalRight"])
+                        self.screen.addstr(row, column, self.frame["verticalRight"], attr["frameAttr"])
                     elif (boxBRY - 2) == row and boxBRX == column and self.debug and \
                             self.debugBoxPlacementShow == self.debugBoxPlacement["Bottom"]:
-                        self.screen.addstr(row, column, self.frame["verticalLeft"])
+                        self.screen.addstr(row, column, self.frame["verticalLeft"], attr["frameAttr"])
                     elif (boxBRY - 2) == row and boxTLX < column and boxBRX > column and self.debug \
                             and self.debugBoxPlacementShow == self.debugBoxPlacement["Bottom"]:
-                        self.screen.addstr(row, column, self.frame["horizontal"])
+                        self.screen.addstr(row, column, self.frame["horizontal"], attr["frameAttr"])
 
                     # NORMAL BOX FRAME
                     elif boxTLY == row and boxTLX == column:
-                        self.screen.addstr(row, column, self.frame["rightDown"])
+                        self.screen.addstr(row, column, self.frame["rightDown"], attr["frameAttr"])
                     elif boxTLY == row and boxBRX == column:
-                        self.screen.addstr(row, column, self.frame["leftDown"])
+                        self.screen.addstr(row, column, self.frame["leftDown"], attr["frameAttr"])
                     elif boxBRY == row and boxTLX == column:
-                        self.screen.addstr(row, column, self.frame["rightUp"])
+                        self.screen.addstr(row, column, self.frame["rightUp"], attr["frameAttr"])
                     elif boxBRY == row and boxBRX == column:
-                        self.screen.addstr(row, column, self.frame["leftUp"])
+                        self.screen.addstr(row, column, self.frame["leftUp"], attr["frameAttr"])
                     elif (boxTLY == row or boxBRY == row) and boxTLX < column and boxBRX > column:
-                        self.screen.addstr(row, column, self.frame["horizontal"])
+                        self.screen.addstr(row, column, self.frame["horizontal"], attr["frameAttr"])
                     elif boxTLY < row and boxBRY > row and (boxTLX == column or boxBRX == column):
-                        self.screen.addstr(row, column, self.frame["vertical"])
+                        self.screen.addstr(row, column, self.frame["vertical"], attr["frameAttr"])
 
             if self.debug:
                 x = boxTLX + 1
@@ -426,7 +439,7 @@ class TerminalTextBoxes():
 
 
     def create_text_box(self, setupName, boxName, width = None, height = None, hPos = None, vPos = 0, hOrient = 0,
-                        vOrient = 0, visable = True, wTextIndent = 0, hTextIndent = 0):
+                        vOrient = 0, visable = True, wTextIndent = 0, hTextIndent = 0, frameAttr="white"):
         """
             Input parameters:
                 setupName           - Name of the box setup that the box belongs to.
@@ -440,6 +453,7 @@ class TerminalTextBoxes():
                 visable             - If True the box is visable else it's not.             Default: True
                 wTextIndent         - Width indentation for text.                           Default: 0
                 hTextIndent         - Height indentation for text.                          Default: 0
+                frameAttr           - The attributes of the frame.                          Default: white
 
             Box properties:
                 name                - Name of the textbox
@@ -532,6 +546,8 @@ class TerminalTextBoxes():
         self.boxSetup[setupName]["boxes"][boxName]["lines"] = list()
         self.boxSetup[setupName]["boxes"][boxName]["scrollIndex"] = 0
 
+        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = frameAttr
+
 
     def add_text_item(self, setupName, boxName, message, attributes="white", lineType="wrap"):
         """ Add a text item to the textItems list of messages. """
@@ -585,6 +601,21 @@ class TerminalTextBoxes():
             raise Exception(f"Setup {setupName} does not exist in boxSetup dictonary.")
 
         self.activeBoxSetup = setupName
+
+
+    def set_box_frame_attr(self, setupName, boxName, attributes):
+        """  """
+        if not isinstance(setupName, str):
+            raise Exception("setupName is not of string type.")
+        if setupName not in self.boxSetup:
+            raise Exception(f"Box setup {name} does not exist.")
+
+        if not isinstance(boxName, str):
+            raise Exception("name is not of string type.")
+        if boxName not in self.boxSetup[setupName]["boxes"]:
+            raise Exception(f"TextBox {boxName} does not exist.")
+
+        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = attributes
 
 
     def __key_handler(self, event):
@@ -669,7 +700,7 @@ class TerminalTextBoxes():
 
             elif char == "\n": # <ENTER>
                 if self.promptString != "":
-                    self.add_text_item("setup", "box", self.promptString, ["red", "bold"], lineType="wrap")
+                    self.add_text_item("setup", "box", self.promptString, ["blue", "bold"], lineType="wrap")
                 self.promptString = ""
                 self.promptCursorPos = 0
                 self.promptVCursorPos = 0
@@ -726,9 +757,11 @@ if __name__ == "__main__":
     obj = TerminalTextBoxes()
 
     obj.create_text_box_setup("setup")
-    obj.create_text_box("setup", "box")
-    obj.create_text_box("setup", "box1", 20, 20, hOrient=obj.H_ORIENT["Right"])
+    obj.create_text_box("setup", "box", frameAttr="red")
+    obj.create_text_box("setup", "box1", 20, 20, hOrient=obj.H_ORIENT["Right"], frameAttr="green")
     obj.set_focus_box("setup", "box")
+
+    obj.set_box_frame_attr("setup", "box", "cyan")
 
 
     obj.create_text_box_setup("setup2")
