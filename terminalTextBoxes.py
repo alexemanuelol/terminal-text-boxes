@@ -80,6 +80,10 @@ class TerminalTextBoxes():
             "cross"                 : self.FRAME_STYLE["singleLine"][10]
         }
 
+        # Resize variables
+        self.resizeDone             = True
+        self.resizeTimer            = threading.Timer(.1, self.resize_timeout)
+
         # Terminal Box Setups
         self.boxSetup               = dict()
         self.activeBoxSetup         = None
@@ -701,6 +705,14 @@ class TerminalTextBoxes():
                 self.promptCursorPos = 0
                 self.promptVCursorPos = 0
 
+                if self.resizeDone:
+                    self.screen.clear()
+
+                self.resizeDone = False
+                self.resizeTimer.cancel()
+                self.resizeTimer = threading.Timer(.1, self.resize_timeout)
+                self.resizeTimer.start()
+
 
             # PROMPT KEY EVENTS ---------------------------------------------------------------------------------------
             elif char == 260:                   # <ARROW-LEFT> KEY (Scroll left)
@@ -709,9 +721,10 @@ class TerminalTextBoxes():
                 if self.promptCursorPos != 0:
                     self.promptCursorPos -= 1
 
-                self.update_prompt()
-                self.update_visual_cursor()
-                continue
+                if self.resizeDone:
+                    self.update_prompt()
+                    self.update_visual_cursor()
+                    continue
 
             elif char == 261:                   # <ARROW-RIGHT> KEY (Scroll right)
                 if self.promptVCursorPos < len(self.promptString) and \
@@ -720,17 +733,19 @@ class TerminalTextBoxes():
                 if self.promptCursorPos < len(self.promptString):
                     self.promptCursorPos += 1
 
-                self.update_prompt()
-                self.update_visual_cursor()
-                continue
+                if self.resizeDone:
+                    self.update_prompt()
+                    self.update_visual_cursor()
+                    continue
 
             elif char == 262:                   # HOME KEY
                 self.promptVCursorPos = 0
                 self.promptCursorPos = 0
 
-                self.update_prompt()
-                self.update_visual_cursor()
-                continue
+                if self.resizeDone:
+                    self.update_prompt()
+                    self.update_visual_cursor()
+                    continue
 
             elif char == 358 or char == 360:    # END KEY
                 if len(self.promptString) >= self.promptLineWidth:
@@ -739,9 +754,10 @@ class TerminalTextBoxes():
                     self.promptVCursorPos = len(self.promptString)
                 self.promptCursorPos = len(self.promptString)
 
-                self.update_prompt()
-                self.update_visual_cursor()
-                continue
+                if self.resizeDone:
+                    self.update_prompt()
+                    self.update_visual_cursor()
+                    continue
 
             elif char == 330:                   # DELETE KEY
                 self.promptString = self.promptString[:self.promptCursorPos] + \
@@ -752,9 +768,10 @@ class TerminalTextBoxes():
                        self.promptVCursorPos != self.promptLineWidth:
                         self.promptVCursorPos += 1
 
-                self.update_prompt()
-                self.update_visual_cursor()
-                continue
+                if self.resizeDone:
+                    self.update_prompt()
+                    self.update_visual_cursor()
+                    continue
 
             elif char == "\x08" or char == 263: # BACKSPACE KEY
                 self.promptString = self.promptString[:self.promptCursorPos][:-1] + \
@@ -769,9 +786,10 @@ class TerminalTextBoxes():
                 if self.promptCursorPos != 0:
                     self.promptCursorPos -= 1
 
-                self.update_prompt()
-                self.update_visual_cursor()
-                continue
+                if self.resizeDone:
+                    self.update_prompt()
+                    self.update_visual_cursor()
+                    continue
 
             #elif char == "\x16":                # CTRL + V (paste)
             #    try:
@@ -833,15 +851,22 @@ class TerminalTextBoxes():
                     if self.promptVCursorPos != self.promptLineWidth:
                         self.promptVCursorPos += 1
                     self.promptCursorPos += 1
-                self.update_prompt()
-                self.update_visual_cursor()
-                continue
 
-            self.update()
+                if self.resizeDone:
+                    self.update_prompt()
+                    self.update_visual_cursor()
+                    continue
+
+            if self.resizeDone:
+                self.update()
 
         curses.endwin() # Close curses terminal
 
 
+    def resize_timeout(self):
+        """  """
+        self.resizeDone = True
+        self.update()
 
 
 
