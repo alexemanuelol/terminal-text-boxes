@@ -146,6 +146,11 @@ class TerminalTextBoxes():
     def start(self):
         """ Start displaying the terminal text boxes module. """
         # Terminal window initialization
+        if not self.boxSetup:
+            raise Exception("There are no setups created.")
+        if len(self.boxSetup[self.activeBoxSetup]["boxes"]) == 0:
+            raise Exception("There are no boxes in the active box setup.")
+
         self.screen = curses.initscr()
         self.screen.keypad(True)
         curses.noecho()
