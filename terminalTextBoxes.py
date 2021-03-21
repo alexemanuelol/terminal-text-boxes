@@ -96,6 +96,15 @@ class TerminalTextBoxes():
         self.promptVLeftPos         = 0
         self.promptVRightPos        = 0
 
+        # Prompt info box
+        self.infoPromptBg           = "═"
+        self.infoPromptBgAttr       = "white"
+        self.infoPromptTextAttr     = "yellow"
+        self.infoPromptCurrMessage  = ""
+        self.infoPromptActive       = False
+        self.infoPromptTextIndent   = 3
+        self.infoPromptTimer        = threading.Timer(5, self.reset_info_prompt)
+
         # wrap if the text item can wrap, single if text item only should be displayed on a single line
         self.LINE_TYPE = {
             "wrap"                  : 0,
@@ -387,14 +396,22 @@ class TerminalTextBoxes():
                     boxSize = f'box: w = {attr["boxWidth"]}, h = {attr["boxHeight"]}'
                     self.screen.addstr(y, x, boxSize[:(attr["boxWidth"] - 1 - self.FRAME_SIZE)])
 
-        self.screen.addstr(self.hTerminal - 1 - self.promptHeight, 0, \
-            self.wTerminal * self.frame["horizontal"])
+        if not self.infoPromptActive:
+            self.reset_info_prompt()
+        else:
+            self.set_info_prompt_message(self.infoPromptCurrMessage)
+
 
 
     def update_prompt(self):
         """ Update the prompt. """
         self.promptVLeftPos = self.promptCursorPos - self.promptVCursorPos
         self.promptVRightPos = self.promptVLeftPos + self.promptLineWidth
+
+        # Clear prompt
+        txt = " " * (self.wTerminal - 1)
+        for i in range(self.promptHeight):
+            self.screen.addstr(self.hTerminal - self.promptHeight - i, 0, txt)
 
         displayedString = ""
         if len(self.promptString) >= self.promptLineWidth:
@@ -420,6 +437,49 @@ class TerminalTextBoxes():
     def update_visual_cursor(self):
         """ Update the visual cursor in the prompt. """
         self.screen.move(self.hTerminal - self.promptHeight, self.promptVCursorPos + len(self.promptSign))
+
+
+    def reset_info_prompt(self):
+        """  """
+        startOfInfoPromptX = 0
+        startOfInfoPromptY = self.hTerminal - 1 - self.promptHeight
+        bg = self.merge_attributes(self.infoPromptBgAttr)
+        self.screen.addstr(startOfInfoPromptY, startOfInfoPromptX, self.wTerminal * self.infoPromptBg, bg)
+
+
+    def set_info_prompt_message(self, message, timeout=None):
+        """ Timeout = ms """
+        if not isinstance(message,str):
+            raise Exception("Message needs to be of type str.")
+
+        self.reset_info_prompt()
+
+        infoPromptY = self.hTerminal - 1 - self.promptHeight
+        textStartX = self.infoPromptTextIndent + 1
+        textMaxLen = self.wTerminal - (self.infoPromptTextIndent * 2) - 2
+        textEndX = textStartX + len(message[:textMaxLen])
+
+        self.infoPromptCurrMessage = message
+        bgAttr = self.merge_attributes(self.infoPromptBgAttr)
+        textAttr = self.merge_attributes(self.infoPromptTextAttr)
+
+        self.screen.addstr(infoPromptY, self.infoPromptTextIndent," ", bgAttr)
+        self.screen.addstr(infoPromptY, textStartX, message[:textMaxLen], textAttr)
+        self.screen.addstr(infoPromptY, textEndX," ", bgAttr)
+
+        if timeout != None:
+            self.infoPromptTimer.cancel()
+            self.infoPromptTimer = threading.Timer(timeout//1000, self.__info_prompt_text_timeout)
+            self.infoPromptTimer.start()
+            self.infoPromptActive = True
+        self.screen.refresh()
+
+    def __info_prompt_text_timeout(self):
+        """  """
+        self.infoPromptActive = False
+        self.reset_info_prompt()
+        self.update_visual_cursor()
+        self.screen.refresh()
 
 
     def create_text_box_setup(self, name):
@@ -701,6 +761,7 @@ class TerminalTextBoxes():
             elif char == "\n": # <ENTER>
                 if self.promptString != "":
                     self.add_text_item("setup", "box", self.promptString, ["blue", "bold"], lineType="wrap")
+                self.set_info_prompt_message(self.promptString, 5000)
                 self.promptString = ""
                 self.promptCursorPos = 0
                 self.promptVCursorPos = 0
@@ -743,6 +804,8 @@ class TerminalTextBoxes():
                     if self.promptVCursorPos != self.promptLineWidth:
                         self.promptVCursorPos += 1
                     self.promptCursorPos += 1
+                self.update_prompt()
+                continue
 
             self.update()
 
