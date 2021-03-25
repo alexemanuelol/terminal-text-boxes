@@ -107,6 +107,7 @@ class TerminalTextBoxes():
         self.infoPromptBg           = "═"
         self.infoPromptBgAttr       = "white"
         self.infoPromptTextAttr     = "yellow"
+        self.infoPromptHeight       = 1
         self.infoPromptCurrMessage  = ""
         self.infoPromptActive       = False
         self.infoPromptTextIndent   = 3
@@ -120,9 +121,11 @@ class TerminalTextBoxes():
 
         # Minimum sizes
         self.PROMPT_MIN_WIDTH       = self.promptSignSize + 10
-        self.PROMPT_MIN_HEIGHT      = 1
-        self.BOX_MIN_WIDTH          = self.FRAME_SIZE * 2
-        self.BOX_MIN_HEIGHT         = self.FRAME_SIZE * 2
+        self.PROMPT_MIN_HEIGHT      = self.promptHeight
+        self.INFO_PROMPT_MIN_WIDTH  = self.infoPromptTextIndent * 2 + (2 + 5)
+        self.INFO_PROMPT_MIN_HEIGHT = self.infoPromptHeight
+        self.BOX_MIN_WIDTH          = (self.FRAME_SIZE * 2) + 1
+        self.BOX_MIN_HEIGHT         = (self.FRAME_SIZE * 2) + 1
 
         # Orientations
         self.H_ORIENT = {
@@ -207,6 +210,8 @@ class TerminalTextBoxes():
         # Update box variables (box sizes)
         self.update_box_variables(False)
 
+        self.update_box_edge_condition()
+
         if self.updateConditionsSatisfied and self.resizeDone:
             # Update text format by re-wrapping text to match new box sizes
             self.update_text_wrapping()
@@ -225,6 +230,8 @@ class TerminalTextBoxes():
 
             # Update the visual cursor
             self.update_visual_cursor()
+        elif not self.updateConditionsSatisfied and self.resizeDone:
+            self.screen.addstr(0,0, "Terminal too small.")
 
         self.screen.refresh()
 
@@ -321,18 +328,41 @@ class TerminalTextBoxes():
             hIndex = 0
             wIndex = wIndex + attr["boxWidth"]
 
-        # TODO: Add edge condition cases (for visable False too)
-        edgeConditions = []
-        edgeConditions.append(self.hTerminal >= (self.BOX_MIN_HEIGHT + self.promptHeight + 1))
-        edgeConditions.append(self.wTerminal >= (self.BOX_MIN_WIDTH * nbrOfBoxes))
-        self.updateConditionsSatisfied = all(condition == True for condition in edgeConditions)
+            if attr["visable"] == False:
+                self.edgeConditions.append(attr["boxWidth"] >= (self.BOX_MIN_WIDTH + 2 * attr["wTextIndent"]))
+                self.edgeConditions.append(attr["boxHeight"] >= (self.BOX_MIN_HEIGHT + 2 * attr["hTextIndent"]))
+
+        self.updateConditionsSatisfied = all(condition == True for condition in self.edgeConditions)
 
         self.promptLineWidth = self.wTerminal - (len(self.promptSign) + 1)
+
+
+    def update_box_edge_condition(self):
+        """  """
+        boxesMinWidth = 0
+        boxesMinHeight = self.BOX_MIN_HEIGHT
+        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+            if attr["fixedWidth"] == None:
+                boxesMinWidth += (self.BOX_MIN_WIDTH + 2 * attr["wTextIndent"]) if attr["visable"] else 0
+            else:
+                boxesMinWidth += attr["boxWidth"] if attr["visable"] else 0
+
+            if attr["fixedHeight"] != None:
+                if attr["boxHeight"] > boxesMinHeight:
+                    boxesMinHeight = attr["boxHeight"]
+
+        self.edgeConditions.append(self.wTerminal >= boxesMinWidth)
+        self.edgeConditions.append(self.hTerminal >= (boxesMinHeight + self.INFO_PROMPT_MIN_HEIGHT + self.PROMPT_MIN_HEIGHT))
+
+        self.updateConditionsSatisfied = all(condition == True for condition in self.edgeConditions)
 
 
     def update_text_wrapping(self):
         """ Update text format by re-wrapping text to match new box sizes """
         for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+            if attr["visable"] == False:
+                continue
+
             self.boxSetup[self.activeBoxSetup]["boxes"][name]["lines"] = list()
             for item, txtAttr, lineType in attr["textItems"]:
                 if lineType == self.LINE_TYPE["single"]:
@@ -436,6 +466,9 @@ class TerminalTextBoxes():
     def update_boxes(self):
         """ Updates all the boxes. """
         for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+            if attr["visable"] == False:
+                continue
+
             displayedText = list()
             if len(attr["lines"]) >= attr["textHeight"]:
                 displayedText = attr["lines"][-attr["textHeight"] + attr["scrollIndex"]:][:attr["textHeight"]]
@@ -485,6 +518,7 @@ class TerminalTextBoxes():
             self.infoPromptTimer.start()
             self.infoPromptActive = True
         self.screen.refresh()
+
 
     def __info_prompt_text_timeout(self):
         """  """
@@ -566,9 +600,18 @@ class TerminalTextBoxes():
 
         if width != None and not isinstance(width, int):
             raise Exception("width is not of integer type.")
+        if width != None and width < self.BOX_MIN_WIDTH:
+            raise Exception(f"width is too small, must be bigger than or equal to {self.BOX_MIN_WIDTH}")
+        if width != None and width < (self.BOX_MIN_WIDTH + 2 * wTextIndent):
+            raise Exception(f"width is too small, must be bigger than or equal to {self.BOX_MIN_WIDTH + 2 * wTextIndent}")
         self.boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = width
+
         if height != None and not isinstance(height, int):
             raise Exception("height is not of integer type.")
+        if height != None and height < self.BOX_MIN_HEIGHT:
+            raise Exception(f"height is too small, must be bigger than or equal to {self.BOX_MIN_HEIGHT}")
+        if height != None and height < (self.BOX_MIN_HEIGHT + 2 * hTextIndent):
+            raise Exception(f"height is too small, must be bigger than or equal to {self.BOX_MIN_HEIGHT + 2 * hTextIndent}")
         self.boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = height
 
         if not isinstance(hOrient, int) or hOrient not in self.H_ORIENT.values():
@@ -626,6 +669,9 @@ class TerminalTextBoxes():
         if boxName not in self.boxSetup[setupName]["boxes"]:
             raise Exception(f"Box {boxName} is not in box setup {setupName} dictonary.")
 
+        if self.boxSetup[setupName]["boxes"][boxName]["visable"] == False:
+            raise Exception(f"Can not add text item to an invisable box.")
+
         attributes = self.merge_attributes(attributes)
 
         if lineType not in self.LINE_TYPE:
@@ -663,6 +709,9 @@ class TerminalTextBoxes():
         """ Set a box in focus i.e. make it scrollable. """
         if boxName not in self.boxSetup[setupName]["boxes"]:
             raise Exception(f"Box {boxName} is not in box setup {setupName} dictonary.")
+
+        if self.boxSetup[setupName]["boxes"][boxName]["visable"] == False:
+            raise Exception(f"Can not set focus on an invisible box.")
 
         self.boxSetup[setupName]["focusedBox"] = boxName
 
@@ -882,7 +931,7 @@ class TestTextBox():
         self.tb = TerminalTextBoxes(self.test_callback)
         self.tb.create_text_box_setup("setup")
 
-        self.tb.create_text_box("setup", "text", frameAttr="green")
+        self.tb.create_text_box("setup", "text", frameAttr="green", wTextIndent=1)
         self.tb.create_text_box("setup", "info", 20, frameAttr="red", hOrient=self.tb.H_ORIENT["Right"])
 
         self.tb.set_focus_box("setup", "text")
@@ -891,7 +940,17 @@ class TestTextBox():
 
     def test_callback(self, message):
         """  """
-        self.tb.add_text_item("setup", "text", message, attributes=["yellow", "bold"])
+        if message.startswith("!note"):
+            message = message.replace("!note", "NOTE:")
+            self.tb.infoPromptTextAttr = ["yellow", "bold"]
+            self.tb.set_info_prompt_message(message, 5000)
+        elif message.startswith("!error"):
+            message = message.replace("!error", "ERROR:")
+            self.tb.infoPromptTextAttr = ["red", "bold"]
+            self.tb.set_info_prompt_message(message, 5000)
+        else:
+            self.tb.infoPromptTextAttr = ["white"]
+            self.tb.add_text_item("setup", "text", message, attributes=["yellow", "bold"])
 
 
 if __name__ == "__main__":
