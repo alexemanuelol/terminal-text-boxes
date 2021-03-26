@@ -210,6 +210,7 @@ class TerminalTextBoxes():
         # Update box variables (box sizes)
         self.update_box_variables(False)
 
+        # Update edge conditions
         self.update_box_edge_condition()
 
         if self.updateConditionsSatisfied and self.resizeDone:
@@ -289,6 +290,10 @@ class TerminalTextBoxes():
         hForUnusedUsed = False
         prevVerticalOrientation = None
         for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+            # Update prev variables
+            attr["prevBoxWidth"] = attr["boxWidth"]
+            attr["prevHeight"] = attr["boxHeight"]
+
             # Box Width/ Height
             if attr["fixedWidth"] == None:
                 attr["boxWidth"] = (wForUnfixed // nbrOfWUnfixedBoxes) + (1 if remainingUnevenWidth > 0 else 0)
@@ -361,6 +366,11 @@ class TerminalTextBoxes():
         """ Update text format by re-wrapping text to match new box sizes """
         for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
             if attr["visable"] == False:
+                continue
+
+            if not (attr["boxWidth"] != attr["prevBoxWidth"] or \
+                    attr["boxHeight"] != attr["prevBoxHeight"] or \
+                    len(attr["textItems"]) != attr["prevTextItemsLength"]):
                 continue
 
             self.boxSetup[self.activeBoxSetup]["boxes"][name]["lines"] = list()
@@ -572,6 +582,9 @@ class TerminalTextBoxes():
                 hTextIndent         - Height indentation for text.                          Default: 0
                 boxWidth            - The width of the box (frame included).
                 boxHeight           - The height of the box (frame included).
+                prevBoxWidth        - The previous box width.
+                prevBoxHeight       - The previous box height.
+                prevTextItemsLength - The previous length of the textItems variable.
                 textWidth           - The width of the text inside the box.
                 textHeight          - The height of the text inside the box.
                 topLeft             - Top left coordinate of the box.
@@ -663,6 +676,13 @@ class TerminalTextBoxes():
 
         self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = frameAttr
 
+        self.boxSetup[setupName]["boxes"][boxName]["boxWidth"] = None # Initial value
+        self.boxSetup[setupName]["boxes"][boxName]["boxHeight"] = None # Initial value
+        self.boxSetup[setupName]["boxes"][boxName]["prevBoxWidth"] = None # Initial value
+        self.boxSetup[setupName]["boxes"][boxName]["prevBoxHeight"] = None # Initial value
+        self.boxSetup[setupName]["boxes"][boxName]["prevTextItemLength"] = None # Initial value
+
+
 
     def add_text_item(self, setupName, boxName, message, attributes="white", lineType="wrap"):
         """ Add a text item to the textItems list of messages. """
@@ -676,6 +696,9 @@ class TerminalTextBoxes():
 
         if lineType not in self.LINE_TYPE:
             raise Exception(f"Line type {lineType} does not exist.")
+
+        self.boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = \
+                len(self.boxSetup[setupName]["boxes"][boxName]["textItems"])
 
         self.boxSetup[setupName]["boxes"][boxName]["textItems"].append([message, attributes, self.LINE_TYPE[lineType]])
 
@@ -863,6 +886,7 @@ class TerminalTextBoxes():
                 self.promptString = ""
                 self.promptCursorPos = 0
                 self.promptVCursorPos = 0
+                # TEMP
                 self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = 0
 
 
