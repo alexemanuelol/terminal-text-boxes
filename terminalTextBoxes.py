@@ -528,10 +528,7 @@ class TerminalTextBoxes():
 
     def create_text_box_setup(self, name):
         """ Creates a new 'text box setup' in which you can add text boxes to. """
-        if not isinstance(name, str):
-            raise Exception("name is not of string type.")
-        if name in self.boxSetup:
-            raise Exception(f"TextBoxSetup {name} already exists.")
+        self.__check_box_setup_valid(name, False)
 
         self.boxSetup[name] = {}
 
@@ -588,15 +585,7 @@ class TerminalTextBoxes():
                 lines               - List of formatted textItems that is splitted to fit the text box width.
                 scrollIndex         - Scroll index that keeps track of how much text in box have been scrolled.
         """
-        if not isinstance(setupName, str):
-            raise Exception("setupName is not of string type.")
-        if setupName not in self.boxSetup:
-            raise Exception(f"Box setup {name} does not exist.")
-
-        if not isinstance(boxName, str):
-            raise Exception("name is not of string type.")
-        if boxName in self.boxSetup[setupName]["boxes"]:
-            raise Exception(f"TextBox {boxName} already exists.")
+        self.__check_text_box_valid(setupName, boxName, False)
 
         self.__init_box_default_parameters(setupName, boxName)
 
@@ -697,13 +686,14 @@ class TerminalTextBoxes():
 
     def set_box_frame_char(self, setupName, boxName):
         """  """
-        # TODO: Create check function that setupname and boxname exist
+        self.__check_text_box_valid(setupName, boxName)
 
 
     def get_box_frame_char_dict(self, setupName, boxName):
         """  """
+        self.__check_text_box_valid(setupName, boxName)
+
         style = self.boxSetup[setupName]["boxes"][boxName]["frameChar"]
-        print(style)
 
         frame = {
             "vertical"              : self.FRAME_STYLE[style][0],
@@ -724,8 +714,7 @@ class TerminalTextBoxes():
 
     def add_text_item(self, setupName, boxName, message, attributes="white", lineType="wrap"):
         """ Add a text item to the textItems list of messages. """
-        if boxName not in self.boxSetup[setupName]["boxes"]:
-            raise Exception(f"Box {boxName} is not in box setup {setupName} dictonary.")
+        self.__check_text_box_valid(setupName, boxName)
 
         if self.boxSetup[setupName]["boxes"][boxName]["visable"] == False:
             raise Exception(f"Can not add text item to an invisable box.")
@@ -768,8 +757,7 @@ class TerminalTextBoxes():
 
     def set_focus_box(self, setupName, boxName):
         """ Set a box in focus i.e. make it scrollable. """
-        if boxName not in self.boxSetup[setupName]["boxes"]:
-            raise Exception(f"Box {boxName} is not in box setup {setupName} dictonary.")
+        self.__check_text_box_valid(setupName, boxName)
 
         if self.boxSetup[setupName]["boxes"][boxName]["visable"] == False:
             raise Exception(f"Can not set focus on an invisible box.")
@@ -779,25 +767,44 @@ class TerminalTextBoxes():
 
     def set_active_box_setup(self, setupName):
         """  """
-        if setupName not in self.boxSetup:
-            raise Exception(f"Setup {setupName} does not exist in boxSetup dictonary.")
+        self.__check_box_setup_valid(setupName)
 
         self.activeBoxSetup = setupName
 
 
     def set_box_frame_attr(self, setupName, boxName, attributes):
         """  """
+        self.__check_text_box_valid(setupName, boxName)
+
+        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = attributes
+
+
+    def __check_box_setup_valid(self, setupName, shouldExist=True):
+        """ Check to see if the given setupBox exist or does not exist in the self.boxSetup dict. """
         if not isinstance(setupName, str):
             raise Exception("setupName is not of string type.")
-        if setupName not in self.boxSetup:
-            raise Exception(f"Box setup {name} does not exist.")
+
+        if shouldExist:
+            if setupName not in self.boxSetup:
+                raise Exception(f"Box setup {name} does not exist.")
+        else:
+            if setupName in self.boxSetup:
+                raise Exception(f"Box setup {name} already exist.")
+
+
+    def __check_text_box_valid(self, setupName, boxName, shouldExist=True):
+        """ Check to see if the given boxName exist or does not exist in the fiven setupName dict. """
+        self.__check_box_setup_valid(setupName)
 
         if not isinstance(boxName, str):
             raise Exception("name is not of string type.")
-        if boxName not in self.boxSetup[setupName]["boxes"]:
-            raise Exception(f"TextBox {boxName} does not exist.")
 
-        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = attributes
+        if shouldExist:
+            if boxName not in self.boxSetup[setupName]["boxes"]:
+                raise Exception(f"TextBox {boxName} does not exist.")
+        else:
+            if boxName in self.boxSetup[setupName]["boxes"]:
+                raise Exception(f"TextBox {boxName} already exist.")
 
 
     def __key_handler(self, event):
@@ -977,10 +984,9 @@ class TerminalTextBoxes():
     def resize_timeout(self):
         """  """
         self.resizeDone = True
+        self.screen.clear()
+        self.screen.refresh()
         self.update()
-
-
-
 
 
 
