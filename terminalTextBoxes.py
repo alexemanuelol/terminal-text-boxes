@@ -2,13 +2,17 @@
 # -*- coding: utf-8 -*-
 
 import curses
+import sys
 import time
 import threading
 
-from textwrap import wrap
 from pynput.keyboard import Key, Controller
+from textwrap import wrap
 
 from unicode import isUnicode
+
+if sys.platform == "win32":
+    import win32clipboard
 
 
 class TerminalTextBoxes():
@@ -19,6 +23,12 @@ class TerminalTextBoxes():
 
         # Prompt callback function
         self.promptCallbackFunction = callback
+
+        # Operating system
+        self.platform = sys.platform
+        self.platform_linux = ["linux", "linux2"]
+        self.platform_windows = ["Windows", "win32", "cygwin"]
+        self.platform_mac = ["Mac", "darwin", "os2", "os2emx"]
 
         # Text color/ attribute variables
         self.TEXT_COLOR = {
@@ -911,19 +921,19 @@ class TerminalTextBoxes():
                     self.update_visual_cursor()
                     continue
 
-            #elif char == "\x16":                # CTRL + V (paste)
-            #    try:
-            #        copy = self.get_clipboard()
-            #        if copy != None and copy != False:
-            #            self.inputString = self.inputString[:self.cursorPos] + copy + self.inputString[self.cursorPos:]
-            #            self.cursorPos += len(copy)
-            #            if (self.visualCursorPos + len(copy)) >= self.lineWidth:
-            #                self.visualCursorPos = self.lineWidth
-            #            else:
-            #                self.visualCursorPos += len(copy)
+            elif char == "\x16":                # CTRL + V (paste)
+                try:
+                    copy = self.get_clipboard()
+                    if copy != None and copy != False:
+                        self.promptString = self.promptString[:self.promptCursorPos] + copy + self.promptString[self.promptCursorPos:]
+                        self.promptCursorPos += len(copy)
+                        if (self.promptVCursorPos + len(copy)) >= self.promptLineWidth:
+                            self.promptVCursorPos = self.promptLineWidth
+                        else:
+                            self.promptVCursorPos += len(copy)
 
-            #    except Exception as e:
-            #        pass
+                except Exception as e:
+                    pass
 
             elif char == "\n": # <ENTER>
                 if self.promptString != "":
@@ -980,6 +990,24 @@ class TerminalTextBoxes():
 
         curses.endwin() # Close curses terminal
 
+
+    def get_clipboard(self):
+        """ Get system clipboard. """
+        clipboard = None
+
+        if self.platform in self.platform_windows:
+            win32clipboard.OpenClipboard()
+            clipboard = win32clipboard.GetClipboardData()
+            win32clipboard.CloseClipboard()
+
+        elif self.platform in self.platform_linux:
+            pass
+        elif self.platform in self.platform_mac:
+            pass
+        else:
+            return False
+
+        return clipboard
 
     def resize_timeout(self):
         """  """
