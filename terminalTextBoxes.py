@@ -67,21 +67,7 @@ class TerminalTextBoxes():
             "blockVague2"           : ["░", "░", "░", "░", "░", "░", "░", "░", "░", "░", "░"],
             "invisible"             : [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "]
         }
-
         self.FRAME_SIZE = 1
-        self.frame = {
-            "vertical"              : self.FRAME_STYLE["singleLine"][0],
-            "verticalLeft"          : self.FRAME_STYLE["singleLine"][1],
-            "verticalRight"         : self.FRAME_STYLE["singleLine"][2],
-            "horizontal"            : self.FRAME_STYLE["singleLine"][3],
-            "horizontalUp"          : self.FRAME_STYLE["singleLine"][4],
-            "horizontalDown"        : self.FRAME_STYLE["singleLine"][5],
-            "leftUp"                : self.FRAME_STYLE["singleLine"][6],
-            "leftDown"              : self.FRAME_STYLE["singleLine"][7],
-            "rightUp"               : self.FRAME_STYLE["singleLine"][8],
-            "rightDown"             : self.FRAME_STYLE["singleLine"][9],
-            "cross"                 : self.FRAME_STYLE["singleLine"][10]
-        }
 
         # Resize variables
         self.resizeDone             = True
@@ -395,6 +381,8 @@ class TerminalTextBoxes():
             boxBRX = attr["bottomRight"]["x"]
             boxBRY = attr["bottomRight"]["y"]
 
+            style = self.get_box_frame_char_dict(self.activeBoxSetup, name)
+
             if name == self.boxSetup[self.activeBoxSetup]["focusedBox"] and self.debug:
                 self.screen.addstr(boxTLY + 1, boxBRX - 1, "*", curses.color_pair(self.TEXT_COLOR["red"]))
 
@@ -403,38 +391,38 @@ class TerminalTextBoxes():
                     # DEBUG BOX ON THE TOP OF EVERY BOX
                     if (boxTLY + 2) == row and boxTLX == column and self.debug and \
                             self.debugBoxPlacementShow == self.debugBoxPlacement["Top"]:
-                        self.screen.addstr(row, column, self.frame["verticalRight"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["verticalRight"], attr["frameAttr"])
                     elif (boxTLY + 2) == row and boxBRX == column and self.debug and \
                             self.debugBoxPlacementShow == self.debugBoxPlacement["Top"]:
-                        self.screen.addstr(row, column, self.frame["verticalLeft"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["verticalLeft"], attr["frameAttr"])
                     elif (boxTLY + 2) == row and boxTLX < column and boxBRX > column and self.debug and \
                             self.debugBoxPlacementShow == self.debugBoxPlacement["Top"]:
-                        self.screen.addstr(row, column, self.frame["horizontal"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["horizontal"], attr["frameAttr"])
 
                     # DEBUG BOX ON THE BOTTOM OF EVERY BOX
                     elif (boxBRY - 2) == row and boxTLX == column and self.debug and \
                             self.debugBoxPlacementShow == self.debugBoxPlacement["Bottom"]:
-                        self.screen.addstr(row, column, self.frame["verticalRight"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["verticalRight"], attr["frameAttr"])
                     elif (boxBRY - 2) == row and boxBRX == column and self.debug and \
                             self.debugBoxPlacementShow == self.debugBoxPlacement["Bottom"]:
-                        self.screen.addstr(row, column, self.frame["verticalLeft"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["verticalLeft"], attr["frameAttr"])
                     elif (boxBRY - 2) == row and boxTLX < column and boxBRX > column and self.debug \
                             and self.debugBoxPlacementShow == self.debugBoxPlacement["Bottom"]:
-                        self.screen.addstr(row, column, self.frame["horizontal"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["horizontal"], attr["frameAttr"])
 
                     # NORMAL BOX FRAME
                     elif boxTLY == row and boxTLX == column:
-                        self.screen.addstr(row, column, self.frame["rightDown"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["rightDown"], attr["frameAttr"])
                     elif boxTLY == row and boxBRX == column:
-                        self.screen.addstr(row, column, self.frame["leftDown"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["leftDown"], attr["frameAttr"])
                     elif boxBRY == row and boxTLX == column:
-                        self.screen.addstr(row, column, self.frame["rightUp"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["rightUp"], attr["frameAttr"])
                     elif boxBRY == row and boxBRX == column:
-                        self.screen.addstr(row, column, self.frame["leftUp"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["leftUp"], attr["frameAttr"])
                     elif (boxTLY == row or boxBRY == row) and boxTLX < column and boxBRX > column:
-                        self.screen.addstr(row, column, self.frame["horizontal"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["horizontal"], attr["frameAttr"])
                     elif boxTLY < row and boxBRY > row and (boxTLX == column or boxBRX == column):
-                        self.screen.addstr(row, column, self.frame["vertical"], attr["frameAttr"])
+                        self.screen.addstr(row, column, style["vertical"], attr["frameAttr"])
 
             if self.debug:
                 x = boxTLX + 1
@@ -555,7 +543,8 @@ class TerminalTextBoxes():
 
 
     def create_text_box(self, setupName, boxName, width = None, height = None, hPos = None, vPos = 0, hOrient = 0,
-                        vOrient = 0, visable = True, wTextIndent = 0, hTextIndent = 0, frameAttr="white"):
+                        vOrient = 0, visable = True, wTextIndent = 0, hTextIndent = 0, frameChar="singleLine",
+                        frameAttr="white"):
         """
             Input parameters:
                 setupName           - Name of the box setup that the box belongs to.
@@ -670,6 +659,7 @@ class TerminalTextBoxes():
             raise Exception("hTextIndent is not of integer type.")
         self.boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = hTextIndent
 
+        self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = frameChar
         self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = frameAttr
 
 
@@ -697,11 +687,39 @@ class TerminalTextBoxes():
         self.boxSetup[setupName]["boxes"][boxName]["textStartY"] = 0
         self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = "white"
         self.boxSetup[setupName]["boxes"][boxName]["frameAttr"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = "singleLine"
 
         self.boxSetup[setupName]["boxes"][boxName]["textItems"] = list()
         self.boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = 0
         self.boxSetup[setupName]["boxes"][boxName]["lines"] = list()
         self.boxSetup[setupName]["boxes"][boxName]["scrollIndex"] = 0
+
+
+    def set_box_frame_char(self, setupName, boxName):
+        """  """
+        # TODO: Create check function that setupname and boxname exist
+
+
+    def get_box_frame_char_dict(self, setupName, boxName):
+        """  """
+        style = self.boxSetup[setupName]["boxes"][boxName]["frameChar"]
+        print(style)
+
+        frame = {
+            "vertical"              : self.FRAME_STYLE[style][0],
+            "verticalLeft"          : self.FRAME_STYLE[style][1],
+            "verticalRight"         : self.FRAME_STYLE[style][2],
+            "horizontal"            : self.FRAME_STYLE[style][3],
+            "horizontalUp"          : self.FRAME_STYLE[style][4],
+            "horizontalDown"        : self.FRAME_STYLE[style][5],
+            "leftUp"                : self.FRAME_STYLE[style][6],
+            "leftDown"              : self.FRAME_STYLE[style][7],
+            "rightUp"               : self.FRAME_STYLE[style][8],
+            "rightDown"             : self.FRAME_STYLE[style][9],
+            "cross"                 : self.FRAME_STYLE[style][10]
+        }
+
+        return frame
 
 
     def add_text_item(self, setupName, boxName, message, attributes="white", lineType="wrap"):
