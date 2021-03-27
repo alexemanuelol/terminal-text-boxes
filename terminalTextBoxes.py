@@ -564,11 +564,12 @@ class TerminalTextBoxes():
                 height              - None if not fixed height (becomes textHeight).        Default: None
                 hPos                - Position between already existing boxes horizontally. Default: None
                 vPos                - Position between already existing boxes vertically.   Default: 0      Not impl
-                hOrient             - Horizontal orientation of the box.                    Default: 0 (Up)
-                vOrient             - Vertical orientation of the box.                      Default: 0 (Left)
+                hOrient             - Horizontal orientation of the box.                    Default: 0 (Left)
+                vOrient             - Vertical orientation of the box.                      Default: 0 (Up)
                 visable             - If True the box is visable else it's not.             Default: True
                 wTextIndent         - Width indentation for text.                           Default: 0
                 hTextIndent         - Height indentation for text.                          Default: 0
+                frameChar           - Character for the frame.                              Default: singleLine
                 frameAttr           - The attributes of the frame.                          Default: white
 
             Box properties:
@@ -608,8 +609,7 @@ class TerminalTextBoxes():
         if boxName in self.boxSetup[setupName]["boxes"]:
             raise Exception(f"TextBox {boxName} already exists.")
 
-        self.boxSetup[setupName]["boxes"][boxName] = dict()
-        self.boxSetup[setupName]["focusedBox"] = boxName
+        self.__init_box_default_parameters(setupName, boxName)
 
         if width != None and not isinstance(width, int):
             raise Exception("width is not of integer type.")
@@ -670,18 +670,38 @@ class TerminalTextBoxes():
             raise Exception("hTextIndent is not of integer type.")
         self.boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = hTextIndent
 
-        self.boxSetup[setupName]["boxes"][boxName]["textItems"] = list()
-        self.boxSetup[setupName]["boxes"][boxName]["lines"] = list()
-        self.boxSetup[setupName]["boxes"][boxName]["scrollIndex"] = 0
-
         self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = frameAttr
 
-        self.boxSetup[setupName]["boxes"][boxName]["boxWidth"] = None # Initial value
-        self.boxSetup[setupName]["boxes"][boxName]["boxHeight"] = None # Initial value
-        self.boxSetup[setupName]["boxes"][boxName]["prevBoxWidth"] = None # Initial value
-        self.boxSetup[setupName]["boxes"][boxName]["prevBoxHeight"] = None # Initial value
-        self.boxSetup[setupName]["boxes"][boxName]["prevTextItemLength"] = None # Initial value
 
+    def __init_box_default_parameters(self, setupName, boxName):
+        """  """
+        self.boxSetup[setupName]["boxes"][boxName] = dict()
+        self.boxSetup[setupName]["focusedBox"] = boxName
+
+        self.boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = self.H_ORIENT["Left"]
+        self.boxSetup[setupName]["boxes"][boxName]["vOrient"] = self.V_ORIENT["Up"]
+        self.boxSetup[setupName]["boxes"][boxName]["visable"] = True
+        self.boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = 0
+        self.boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = 0
+        self.boxSetup[setupName]["boxes"][boxName]["boxWidth"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["boxHeight"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["prevBoxWidth"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["prevBoxHeight"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["textWidth"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["textHeight"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["topLeft"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["bottomRight"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["textStartX"] = 0
+        self.boxSetup[setupName]["boxes"][boxName]["textStartY"] = 0
+        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = "white"
+        self.boxSetup[setupName]["boxes"][boxName]["frameAttr"] = None
+
+        self.boxSetup[setupName]["boxes"][boxName]["textItems"] = list()
+        self.boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = 0
+        self.boxSetup[setupName]["boxes"][boxName]["lines"] = list()
+        self.boxSetup[setupName]["boxes"][boxName]["scrollIndex"] = 0
 
 
     def add_text_item(self, setupName, boxName, message, attributes="white", lineType="wrap"):
