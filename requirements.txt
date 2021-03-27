@@ -1,0 +1,4 @@
+windows-curses==2.2.0
+pynput==1.7.3
+pywin32==300
+
