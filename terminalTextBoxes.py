@@ -149,6 +149,10 @@ class TerminalTextBoxes():
         self.debugBoxInfoShow       = 0
 
 
+    ###################################################################################################################
+    # PUBLIC FUNCTIONS                                                                                                #
+    ###################################################################################################################
+
     def start(self):
         """ Start displaying the terminal text boxes module. """
         # Terminal window initialization
@@ -177,21 +181,183 @@ class TerminalTextBoxes():
         self.fakeKeyboard.press(Key.esc)
 
 
-    def init_colors(self):
-        """ Init curses colors. """
-        curses.start_color()
-        curses.use_default_colors()
+    def create_text_box_setup(self, name):
+        """ Creates a new 'text box setup' in which you can add text boxes to. """
+        self.__check_box_setup_valid(name, False)
 
-        for color, value in self.TEXT_COLOR.items():
-            curses.init_pair(value, value - 1, -1)
+        self.boxSetup[name] = {}
+
+        self.boxSetup[name]["boxes"] = dict()
+        self.boxSetup[name]["boxOrder"] = list()
+        self.boxSetup[name]["focusedBox"] = None
+
+        self.activeBoxSetup = name
 
 
-    def update_boxes_frame_attr(self):
-        """  """
-        for setupName, setupAttr in self.boxSetup.items():
-            for boxName, boxAttr in setupAttr["boxes"].items():
-                boxAttr["frameAttr"] = self.merge_attributes(boxAttr["frameAttrUnmerged"])
+    def create_text_box(self, setupName, boxName, width = None, height = None, hPos = None, vPos = 0, hOrient = 0,
+                        vOrient = 0, visable = True, wTextIndent = 0, hTextIndent = 0, frameChar="singleLine",
+                        frameAttr="white", scrollVisable=True):
+        """
+            Input parameters:
+                setupName           - Name of the box setup that the box belongs to.
+                boxName             - Name of the textbox.
+                width               - None if not fixed width (becomes textWidth).          Default: None
+                height              - None if not fixed height (becomes textHeight).        Default: None
+                hPos                - Position between already existing boxes horizontally. Default: None
+                vPos                - Position between already existing boxes vertically.   Default: 0      Not impl
+                hOrient             - Horizontal orientation of the box.                    Default: 0 (Left)
+                vOrient             - Vertical orientation of the box.                      Default: 0 (Up)
+                visable             - If True the box is visable else it's not.             Default: True
+                wTextIndent         - Width indentation for text.                           Default: 0
+                hTextIndent         - Height indentation for text.                          Default: 0
+                frameChar           - Character for the frame.                              Default: singleLine
+                frameAttr           - The attributes of the frame.                          Default: white
 
+            Box properties:
+                name                - Name of the textbox
+                fixedWidth          - None if not fixed width (becomes boxWidth).
+                fixedHeight         - None if not fixed height (becomes boxHeight).
+                hOrient             - Horizontal orientation of the box.                    Default: 0 (Up)
+                vOrient             - Vertical orientation of the box.                      Default: 0 (Left)
+                visable             - If True the box is visable else it's not.             Default: True
+                wTextIndent         - Width indentation for text.                           Default: 0
+                hTextIndent         - Height indentation for text.                          Default: 0
+                boxWidth            - The width of the box (frame included).
+                boxHeight           - The height of the box (frame included).
+                prevBoxWidth        - The previous box width.
+                prevBoxHeight       - The previous box height.
+                prevTextItemsLength - The previous length of the textItems variable.
+                textWidth           - The width of the text inside the box.
+                textHeight          - The height of the text inside the box.
+                topLeft             - Top left coordinate of the box.
+                bottomRight         - Bottom right coordinate of the box.
+                textStartX          - x-coordinate of where the text start in the box.
+                textStartY          - y-coordinate of where the text start in the box.
+
+            Box Text variables:
+                textItems           - List of all the text items (One list item is one continuous message along
+                                      with text color and other attributes).
+                lines               - List of formatted textItems that is splitted to fit the text box width.
+                scrollIndex         - Scroll index that keeps track of how much text in box have been scrolled.
+        """
+        self.__check_text_box_valid(setupName, boxName, False)
+
+        self.__init_box_default_parameters(setupName, boxName)
+
+        if width != None and not isinstance(width, int):
+            raise Exception("width is not of integer type.")
+        if width != None and width < self.BOX_MIN_WIDTH:
+            raise Exception(f"width is too small, must be bigger than or equal to {self.BOX_MIN_WIDTH}")
+        if width != None and width < (self.BOX_MIN_WIDTH + 2 * wTextIndent):
+            raise Exception(f"width is too small, must be bigger than or equal to {self.BOX_MIN_WIDTH + 2 * wTextIndent}")
+        self.boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = width
+
+        if height != None and not isinstance(height, int):
+            raise Exception("height is not of integer type.")
+        if height != None and height < self.BOX_MIN_HEIGHT:
+            raise Exception(f"height is too small, must be bigger than or equal to {self.BOX_MIN_HEIGHT}")
+        if height != None and height < (self.BOX_MIN_HEIGHT + 2 * hTextIndent):
+            raise Exception(f"height is too small, must be bigger than or equal to {self.BOX_MIN_HEIGHT + 2 * hTextIndent}")
+        self.boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = height
+
+        if not isinstance(hOrient, int) or hOrient not in self.H_ORIENT.values():
+            raise Exception("hOrient is not of integer type or not within acceptable range.")
+        self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = hOrient
+
+        if not isinstance(vOrient, int) or vOrient not in self.V_ORIENT.values():
+            raise Exception("vOrient is not of integer type or not within acceptable range.")
+        self.boxSetup[setupName]["boxes"][boxName]["vOrient"] = vOrient
+
+        if hPos != None:
+            if not isinstance(hPos, int):
+                raise Exception("hPos is not of integer type")
+            self.boxSetup[setupName]["boxOrder"].insert(hPos, boxName)
+
+            if self.boxSetup[setupName]["boxOrder"].index(boxName) > 0:
+                prevBoxIndex = self.boxSetup[setupName]["boxOrder"].index(boxName) - 1
+            else:
+                prevBoxIndex = 0
+
+            self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = \
+                    self.boxSetup[setupName]["boxes"][self.boxSetup[setupName]["boxOrder"][prevBoxIndex]]["hOrient"]
+
+            # TODO: fix vPos as well, check how big list is? (How deep vertical is)
+        elif hOrient == self.H_ORIENT["Left"]:
+            self.boxSetup[setupName]["boxOrder"].insert(0, boxName)
+        elif hOrient == self.H_ORIENT["Right"]:
+            self.boxSetup[setupName]["boxOrder"].append(boxName)
+        else:
+            self.boxSetup[setupName]["boxOrder"].append(boxName)
+        # Sort dict according to boxOrder
+        self.boxSetup[setupName]["boxes"] = \
+                {key : self.boxSetup[setupName]["boxes"][key] for key in self.boxSetup[setupName]["boxOrder"]}
+
+        if visable != True and visable != False:
+            raise Exception("visable not a boolean.")
+        self.boxSetup[setupName]["boxes"][boxName]["visable"] = visable
+
+        if  not isinstance(wTextIndent, int):
+            raise Exception("wTextIndent is not of integer type.")
+        self.boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = wTextIndent
+        if not isinstance(hTextIndent, int):
+            raise Exception("hTextIndent is not of integer type.")
+        self.boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = hTextIndent
+
+        self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = frameChar
+        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = frameAttr
+
+        self.boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = scrollVisable
+
+
+    def set_info_prompt_message(self, message, timeout=None):
+        """ Timeout = ms """
+        if not isinstance(message,str):
+            raise Exception("Message needs to be of type str.")
+
+        self.reset_info_prompt()
+
+        infoPromptY = self.hTerminal - 1 - self.promptHeight
+        textStartX = self.infoPromptTextIndent + 1
+        textMaxLen = self.wTerminal - (self.infoPromptTextIndent * 2) - 2
+        textEndX = textStartX + len(message[:textMaxLen])
+
+        self.infoPromptCurrMessage = message
+        bgAttr = self.merge_attributes(self.infoPromptBgAttr)
+        textAttr = self.merge_attributes(self.infoPromptTextAttr)
+
+        self.screen.addstr(infoPromptY, self.infoPromptTextIndent," ", bgAttr)
+        self.screen.addstr(infoPromptY, textStartX, message[:textMaxLen], textAttr)
+        self.screen.addstr(infoPromptY, textEndX," ", bgAttr)
+
+        if timeout != None:
+            self.infoPromptTimer.cancel()
+            self.infoPromptTimer = threading.Timer(timeout//1000, self.__info_prompt_text_timeout)
+            self.infoPromptTimer.start()
+            self.infoPromptActive = True
+        self.screen.refresh()
+
+
+    def add_text_item(self, setupName, boxName, message, attributes="white", lineType="wrap"):
+        """ Add a text item to the textItems list of messages. """
+        self.__check_text_box_valid(setupName, boxName)
+
+        if self.boxSetup[setupName]["boxes"][boxName]["visable"] == False:
+            raise Exception(f"Can not add text item to an invisable box.")
+
+        attributes = self.merge_attributes(attributes)
+
+        if lineType not in self.LINE_TYPE:
+            raise Exception(f"Line type {lineType} does not exist.")
+
+        self.boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = \
+                len(self.boxSetup[setupName]["boxes"][boxName]["textItems"])
+
+        self.boxSetup[setupName]["boxes"][boxName]["textItems"].append([message, attributes, self.LINE_TYPE[lineType]])
+
+
+    ###################################################################################################################
+    # UPDATE FUNCTIONS                                                                                                #
+    ###################################################################################################################
 
     def update(self):
         """ Updates all. """
@@ -455,7 +621,6 @@ class TerminalTextBoxes():
             self.set_info_prompt_message(self.infoPromptCurrMessage)
 
 
-
     def update_prompt(self):
         """ Update the prompt. """
         self.promptVLeftPos = self.promptCursorPos - self.promptVCursorPos
@@ -520,211 +685,32 @@ class TerminalTextBoxes():
         self.screen.move(self.hTerminal - self.promptHeight, self.promptVCursorPos + len(self.promptSign))
 
 
-    def reset_info_prompt(self):
+    def update_boxes_frame_attr(self):
         """  """
-        startOfInfoPromptX = 0
-        startOfInfoPromptY = self.hTerminal - 1 - self.promptHeight
-        bg = self.merge_attributes(self.infoPromptBgAttr)
-        self.screen.addstr(startOfInfoPromptY, startOfInfoPromptX, self.wTerminal * self.infoPromptBg, bg)
+        for setupName, setupAttr in self.boxSetup.items():
+            for boxName, boxAttr in setupAttr["boxes"].items():
+                boxAttr["frameAttr"] = self.merge_attributes(boxAttr["frameAttrUnmerged"])
 
 
-    def set_info_prompt_message(self, message, timeout=None):
-        """ Timeout = ms """
-        if not isinstance(message,str):
-            raise Exception("Message needs to be of type str.")
+    ###################################################################################################################
+    # GET/SET FUNCTIONS                                                                                               #
+    ###################################################################################################################
 
-        self.reset_info_prompt()
-
-        infoPromptY = self.hTerminal - 1 - self.promptHeight
-        textStartX = self.infoPromptTextIndent + 1
-        textMaxLen = self.wTerminal - (self.infoPromptTextIndent * 2) - 2
-        textEndX = textStartX + len(message[:textMaxLen])
-
-        self.infoPromptCurrMessage = message
-        bgAttr = self.merge_attributes(self.infoPromptBgAttr)
-        textAttr = self.merge_attributes(self.infoPromptTextAttr)
-
-        self.screen.addstr(infoPromptY, self.infoPromptTextIndent," ", bgAttr)
-        self.screen.addstr(infoPromptY, textStartX, message[:textMaxLen], textAttr)
-        self.screen.addstr(infoPromptY, textEndX," ", bgAttr)
-
-        if timeout != None:
-            self.infoPromptTimer.cancel()
-            self.infoPromptTimer = threading.Timer(timeout//1000, self.__info_prompt_text_timeout)
-            self.infoPromptTimer.start()
-            self.infoPromptActive = True
-        self.screen.refresh()
-
-
-    def __info_prompt_text_timeout(self):
+    def set_active_box_setup(self, setupName):
         """  """
-        self.infoPromptActive = False
-        self.reset_info_prompt()
-        self.update_visual_cursor()
-        self.screen.refresh()
+        self.__check_box_setup_valid(setupName)
+
+        self.activeBoxSetup = setupName
 
 
-    def create_text_box_setup(self, name):
-        """ Creates a new 'text box setup' in which you can add text boxes to. """
-        self.__check_box_setup_valid(name, False)
+    def set_focus_box(self, setupName, boxName):
+        """ Set a box in focus i.e. make it scrollable. """
+        self.__check_text_box_valid(setupName, boxName)
 
-        self.boxSetup[name] = {}
+        if self.boxSetup[setupName]["boxes"][boxName]["visable"] == False:
+            raise Exception(f"Can not set focus on an invisible box.")
 
-        self.boxSetup[name]["boxes"] = dict()
-        self.boxSetup[name]["boxOrder"] = list()
-        self.boxSetup[name]["focusedBox"] = None
-
-        self.activeBoxSetup = name
-
-
-    def create_text_box(self, setupName, boxName, width = None, height = None, hPos = None, vPos = 0, hOrient = 0,
-                        vOrient = 0, visable = True, wTextIndent = 0, hTextIndent = 0, frameChar="singleLine",
-                        frameAttr="white", scrollVisable=True):
-        """
-            Input parameters:
-                setupName           - Name of the box setup that the box belongs to.
-                boxName             - Name of the textbox.
-                width               - None if not fixed width (becomes textWidth).          Default: None
-                height              - None if not fixed height (becomes textHeight).        Default: None
-                hPos                - Position between already existing boxes horizontally. Default: None
-                vPos                - Position between already existing boxes vertically.   Default: 0      Not impl
-                hOrient             - Horizontal orientation of the box.                    Default: 0 (Left)
-                vOrient             - Vertical orientation of the box.                      Default: 0 (Up)
-                visable             - If True the box is visable else it's not.             Default: True
-                wTextIndent         - Width indentation for text.                           Default: 0
-                hTextIndent         - Height indentation for text.                          Default: 0
-                frameChar           - Character for the frame.                              Default: singleLine
-                frameAttr           - The attributes of the frame.                          Default: white
-
-            Box properties:
-                name                - Name of the textbox
-                fixedWidth          - None if not fixed width (becomes boxWidth).
-                fixedHeight         - None if not fixed height (becomes boxHeight).
-                hOrient             - Horizontal orientation of the box.                    Default: 0 (Up)
-                vOrient             - Vertical orientation of the box.                      Default: 0 (Left)
-                visable             - If True the box is visable else it's not.             Default: True
-                wTextIndent         - Width indentation for text.                           Default: 0
-                hTextIndent         - Height indentation for text.                          Default: 0
-                boxWidth            - The width of the box (frame included).
-                boxHeight           - The height of the box (frame included).
-                prevBoxWidth        - The previous box width.
-                prevBoxHeight       - The previous box height.
-                prevTextItemsLength - The previous length of the textItems variable.
-                textWidth           - The width of the text inside the box.
-                textHeight          - The height of the text inside the box.
-                topLeft             - Top left coordinate of the box.
-                bottomRight         - Bottom right coordinate of the box.
-                textStartX          - x-coordinate of where the text start in the box.
-                textStartY          - y-coordinate of where the text start in the box.
-
-            Box Text variables:
-                textItems           - List of all the text items (One list item is one continuous message along
-                                      with text color and other attributes).
-                lines               - List of formatted textItems that is splitted to fit the text box width.
-                scrollIndex         - Scroll index that keeps track of how much text in box have been scrolled.
-        """
-        self.__check_text_box_valid(setupName, boxName, False)
-
-        self.__init_box_default_parameters(setupName, boxName)
-
-        if width != None and not isinstance(width, int):
-            raise Exception("width is not of integer type.")
-        if width != None and width < self.BOX_MIN_WIDTH:
-            raise Exception(f"width is too small, must be bigger than or equal to {self.BOX_MIN_WIDTH}")
-        if width != None and width < (self.BOX_MIN_WIDTH + 2 * wTextIndent):
-            raise Exception(f"width is too small, must be bigger than or equal to {self.BOX_MIN_WIDTH + 2 * wTextIndent}")
-        self.boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = width
-
-        if height != None and not isinstance(height, int):
-            raise Exception("height is not of integer type.")
-        if height != None and height < self.BOX_MIN_HEIGHT:
-            raise Exception(f"height is too small, must be bigger than or equal to {self.BOX_MIN_HEIGHT}")
-        if height != None and height < (self.BOX_MIN_HEIGHT + 2 * hTextIndent):
-            raise Exception(f"height is too small, must be bigger than or equal to {self.BOX_MIN_HEIGHT + 2 * hTextIndent}")
-        self.boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = height
-
-        if not isinstance(hOrient, int) or hOrient not in self.H_ORIENT.values():
-            raise Exception("hOrient is not of integer type or not within acceptable range.")
-        self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = hOrient
-
-        if not isinstance(vOrient, int) or vOrient not in self.V_ORIENT.values():
-            raise Exception("vOrient is not of integer type or not within acceptable range.")
-        self.boxSetup[setupName]["boxes"][boxName]["vOrient"] = vOrient
-
-        if hPos != None:
-            if not isinstance(hPos, int):
-                raise Exception("hPos is not of integer type")
-            self.boxSetup[setupName]["boxOrder"].insert(hPos, boxName)
-
-            if self.boxSetup[setupName]["boxOrder"].index(boxName) > 0:
-                prevBoxIndex = self.boxSetup[setupName]["boxOrder"].index(boxName) - 1
-            else:
-                prevBoxIndex = 0
-
-            self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = \
-                    self.boxSetup[setupName]["boxes"][self.boxSetup[setupName]["boxOrder"][prevBoxIndex]]["hOrient"]
-
-            # TODO: fix vPos as well, check how big list is? (How deep vertical is)
-        elif hOrient == self.H_ORIENT["Left"]:
-            self.boxSetup[setupName]["boxOrder"].insert(0, boxName)
-        elif hOrient == self.H_ORIENT["Right"]:
-            self.boxSetup[setupName]["boxOrder"].append(boxName)
-        else:
-            self.boxSetup[setupName]["boxOrder"].append(boxName)
-        # Sort dict according to boxOrder
-        self.boxSetup[setupName]["boxes"] = \
-                {key : self.boxSetup[setupName]["boxes"][key] for key in self.boxSetup[setupName]["boxOrder"]}
-
-        if visable != True and visable != False:
-            raise Exception("visable not a boolean.")
-        self.boxSetup[setupName]["boxes"][boxName]["visable"] = visable
-
-        if  not isinstance(wTextIndent, int):
-            raise Exception("wTextIndent is not of integer type.")
-        self.boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = wTextIndent
-        if not isinstance(hTextIndent, int):
-            raise Exception("hTextIndent is not of integer type.")
-        self.boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = hTextIndent
-
-        self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = frameChar
-        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = frameAttr
-
-        self.boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = scrollVisable
-
-
-    def __init_box_default_parameters(self, setupName, boxName):
-        """  """
-        self.boxSetup[setupName]["boxes"][boxName] = dict()
         self.boxSetup[setupName]["focusedBox"] = boxName
-
-        self.boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = self.H_ORIENT["Left"]
-        self.boxSetup[setupName]["boxes"][boxName]["vOrient"] = self.V_ORIENT["Up"]
-        self.boxSetup[setupName]["boxes"][boxName]["visable"] = True
-        self.boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = 0
-        self.boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = 0
-        self.boxSetup[setupName]["boxes"][boxName]["boxWidth"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["boxHeight"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["prevBoxWidth"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["prevBoxHeight"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["textWidth"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["textHeight"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["topLeft"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["bottomRight"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["textStartX"] = 0
-        self.boxSetup[setupName]["boxes"][boxName]["textStartY"] = 0
-        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = "white"
-        self.boxSetup[setupName]["boxes"][boxName]["frameAttr"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = "singleLine"
-
-        self.boxSetup[setupName]["boxes"][boxName]["textItems"] = list()
-        self.boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = 0
-        self.boxSetup[setupName]["boxes"][boxName]["lines"] = list()
-        self.boxSetup[setupName]["boxes"][boxName]["scrollIndex"] = 0
-
-        self.boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = True
-        self.boxSetup[setupName]["boxes"][boxName]["scrollChar"] = "█"
 
 
     def set_box_scroll_visable(self, setupName, boxName, value):
@@ -734,9 +720,16 @@ class TerminalTextBoxes():
         self.boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = value
 
 
-    def set_box_frame_char(self, setupName, boxName):
+    def set_box_frame_char(self, setupName, boxName, char):
         """  """
         self.__check_text_box_valid(setupName, boxName)
+
+        if not isinstance(char, str):
+            raise Exception("char is not of string type.")
+        if char not in self.FRAME_STYLE:
+            raise Exception(f"{char} not in self.FRAME_STYLE.")
+
+        self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = char
 
 
     def get_box_frame_char_dict(self, setupName, boxName):
@@ -762,66 +755,6 @@ class TerminalTextBoxes():
         return frame
 
 
-    def add_text_item(self, setupName, boxName, message, attributes="white", lineType="wrap"):
-        """ Add a text item to the textItems list of messages. """
-        self.__check_text_box_valid(setupName, boxName)
-
-        if self.boxSetup[setupName]["boxes"][boxName]["visable"] == False:
-            raise Exception(f"Can not add text item to an invisable box.")
-
-        attributes = self.merge_attributes(attributes)
-
-        if lineType not in self.LINE_TYPE:
-            raise Exception(f"Line type {lineType} does not exist.")
-
-        self.boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = \
-                len(self.boxSetup[setupName]["boxes"][boxName]["textItems"])
-
-        self.boxSetup[setupName]["boxes"][boxName]["textItems"].append([message, attributes, self.LINE_TYPE[lineType]])
-
-
-    def merge_attributes(self, attributes):
-        """ Merges all attribute values to a single attribute and returns it.
-            Raises exception if invalid attribute exist.
-        """
-        if attributes == None:
-            return None
-
-        if isinstance(attributes, list) or isinstance(attributes, str):
-            if isinstance(attributes, str):
-                attributes = [attributes]
-        else:
-            raise Exception("Attributes needs to be either string or list.")
-
-        merged = 0
-        for item in attributes:
-            if item in self.TEXT_COLOR:
-                merged = merged | curses.color_pair(self.TEXT_COLOR[item])
-            elif item in self.TEXT_ATTR:
-                merged = merged | self.TEXT_ATTR[item]
-            else:
-                raise Exception(f"Attribute {item} is not available.")
-
-        return merged
-
-
-    def set_focus_box(self, setupName, boxName):
-        """ Set a box in focus i.e. make it scrollable. """
-        self.__check_text_box_valid(setupName, boxName)
-
-        if self.boxSetup[setupName]["boxes"][boxName]["visable"] == False:
-            raise Exception(f"Can not set focus on an invisible box.")
-
-        self.boxSetup[setupName]["focusedBox"] = boxName
-
-
-    def set_active_box_setup(self, setupName):
-        """  """
-        self.__check_box_setup_valid(setupName)
-
-        self.activeBoxSetup = setupName
-
-
     def set_box_frame_attr(self, setupName, boxName, attributes):
         """  """
         self.__check_text_box_valid(setupName, boxName)
@@ -829,33 +762,9 @@ class TerminalTextBoxes():
         self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = attributes
 
 
-    def __check_box_setup_valid(self, setupName, shouldExist=True):
-        """ Check to see if the given setupBox exist or does not exist in the self.boxSetup dict. """
-        if not isinstance(setupName, str):
-            raise Exception("setupName is not of string type.")
-
-        if shouldExist:
-            if setupName not in self.boxSetup:
-                raise Exception(f"Box setup {name} does not exist.")
-        else:
-            if setupName in self.boxSetup:
-                raise Exception(f"Box setup {name} already exist.")
-
-
-    def __check_text_box_valid(self, setupName, boxName, shouldExist=True):
-        """ Check to see if the given boxName exist or does not exist in the fiven setupName dict. """
-        self.__check_box_setup_valid(setupName)
-
-        if not isinstance(boxName, str):
-            raise Exception("name is not of string type.")
-
-        if shouldExist:
-            if boxName not in self.boxSetup[setupName]["boxes"]:
-                raise Exception(f"TextBox {boxName} does not exist.")
-        else:
-            if boxName in self.boxSetup[setupName]["boxes"]:
-                raise Exception(f"TextBox {boxName} already exist.")
-
+    ###################################################################################################################
+    # KEY HANDLER FUNCTION                                                                                            #
+    ###################################################################################################################
 
     def __key_handler(self, event):
         """ Handler of key presses. """
@@ -1032,6 +941,62 @@ class TerminalTextBoxes():
         curses.endwin() # Close curses terminal
 
 
+    ###################################################################################################################
+    # OTHER FUNCTIONS                                                                                                 #
+    ###################################################################################################################
+
+    def init_colors(self):
+        """ Init curses colors. """
+        curses.start_color()
+        curses.use_default_colors()
+
+        for color, value in self.TEXT_COLOR.items():
+            curses.init_pair(value, value - 1, -1)
+
+
+    def __init_box_default_parameters(self, setupName, boxName):
+        """  """
+        self.boxSetup[setupName]["boxes"][boxName] = dict()
+        self.boxSetup[setupName]["focusedBox"] = boxName
+
+        self.boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = self.H_ORIENT["Left"]
+        self.boxSetup[setupName]["boxes"][boxName]["vOrient"] = self.V_ORIENT["Up"]
+        self.boxSetup[setupName]["boxes"][boxName]["visable"] = True
+        self.boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = 0
+        self.boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = 0
+        self.boxSetup[setupName]["boxes"][boxName]["boxWidth"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["boxHeight"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["prevBoxWidth"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["prevBoxHeight"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["textWidth"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["textHeight"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["topLeft"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["bottomRight"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["textStartX"] = 0
+        self.boxSetup[setupName]["boxes"][boxName]["textStartY"] = 0
+        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = "white"
+        self.boxSetup[setupName]["boxes"][boxName]["frameAttr"] = None
+        self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = "singleLine"
+
+        self.boxSetup[setupName]["boxes"][boxName]["textItems"] = list()
+        self.boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = 0
+        self.boxSetup[setupName]["boxes"][boxName]["lines"] = list()
+        self.boxSetup[setupName]["boxes"][boxName]["scrollIndex"] = 0
+
+        self.boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = True
+        self.boxSetup[setupName]["boxes"][boxName]["scrollChar"] = "█"
+
+
+    def reset_info_prompt(self):
+        """  """
+        startOfInfoPromptX = 0
+        startOfInfoPromptY = self.hTerminal - 1 - self.promptHeight
+        bg = self.merge_attributes(self.infoPromptBgAttr)
+        self.screen.addstr(startOfInfoPromptY, startOfInfoPromptX, self.wTerminal * self.infoPromptBg, bg)
+
+
     def get_clipboard(self):
         """ Get system clipboard. """
         clipboard = None
@@ -1050,12 +1015,78 @@ class TerminalTextBoxes():
 
         return clipboard
 
+
+    def __info_prompt_text_timeout(self):
+        """  """
+        self.infoPromptActive = False
+        self.reset_info_prompt()
+        self.update_visual_cursor()
+        self.screen.refresh()
+
+
     def resize_timeout(self):
         """  """
         self.resizeDone = True
         self.screen.clear()
         self.screen.refresh()
         self.update()
+
+
+    def merge_attributes(self, attributes):
+        """ Merges all attribute values to a single attribute and returns it.
+            Raises exception if invalid attribute exist.
+        """
+        if attributes == None:
+            return None
+
+        if isinstance(attributes, list) or isinstance(attributes, str):
+            if isinstance(attributes, str):
+                attributes = [attributes]
+        else:
+            raise Exception("Attributes needs to be either string or list.")
+
+        merged = 0
+        for item in attributes:
+            if item in self.TEXT_COLOR:
+                merged = merged | curses.color_pair(self.TEXT_COLOR[item])
+            elif item in self.TEXT_ATTR:
+                merged = merged | self.TEXT_ATTR[item]
+            else:
+                raise Exception(f"Attribute {item} is not available.")
+
+        return merged
+
+
+    def __check_box_setup_valid(self, setupName, shouldExist=True):
+        """ Check to see if the given setupBox exist or does not exist in the self.boxSetup dict. """
+        if not isinstance(setupName, str):
+            raise Exception("setupName is not of string type.")
+
+        if shouldExist:
+            if setupName not in self.boxSetup:
+                raise Exception(f"Box setup {name} does not exist.")
+        else:
+            if setupName in self.boxSetup:
+                raise Exception(f"Box setup {name} already exist.")
+
+
+    def __check_text_box_valid(self, setupName, boxName, shouldExist=True):
+        """ Check to see if the given boxName exist or does not exist in the fiven setupName dict. """
+        self.__check_box_setup_valid(setupName)
+
+        if not isinstance(boxName, str):
+            raise Exception("name is not of string type.")
+
+        if shouldExist:
+            if boxName not in self.boxSetup[setupName]["boxes"]:
+                raise Exception(f"TextBox {boxName} does not exist.")
+        else:
+            if boxName in self.boxSetup[setupName]["boxes"]:
+                raise Exception(f"TextBox {boxName} already exist.")
+
+
+
+
 
 
 
