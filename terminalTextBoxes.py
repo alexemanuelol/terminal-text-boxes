@@ -130,8 +130,8 @@ class TerminalTextBoxes():
         self.__promptVRightPos          = 0
 
         # Prompt info box
-        self.__infoPromptBg             = "═"
-        self.__infoPromptBgAttr         = "white"
+        self.__infoPromptChar             = "═"
+        self.__infoPromptCharAttr         = "white"
         self.__infoPromptTextAttr       = "yellow"
         self.__infoPromptHeight         = 1
         self.__infoPromptCurrMessage    = ""
@@ -325,7 +325,7 @@ class TerminalTextBoxes():
         textEndX = textStartX + len(message[:textMaxLen])
 
         self.__infoPromptCurrMessage = message
-        bgAttr = self.__merge_attributes(self.__infoPromptBgAttr)
+        bgAttr = self.__merge_attributes(self.__infoPromptCharAttr)
         textAttr = self.__merge_attributes(self.__infoPromptTextAttr)
 
         self.__screen.addstr(infoPromptY, self.__infoPromptTextIndent," ", bgAttr)
@@ -996,8 +996,8 @@ class TerminalTextBoxes():
         """  """
         startOfInfoPromptX = 0
         startOfInfoPromptY = self.__hTerminal - 1 - self.__promptHeight
-        bg = self.__merge_attributes(self.__infoPromptBgAttr)
-        self.__screen.addstr(startOfInfoPromptY, startOfInfoPromptX, self.__wTerminal * self.__infoPromptBg, bg)
+        bg = self.__merge_attributes(self.__infoPromptCharAttr)
+        self.__screen.addstr(startOfInfoPromptY, startOfInfoPromptX, self.__wTerminal * self.__infoPromptChar, bg)
 
 
     def __get_clipboard(self):
