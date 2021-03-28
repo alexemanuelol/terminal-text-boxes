@@ -14,6 +14,11 @@ from unicode import isUnicode
 if sys.platform == "win32":
     import win32clipboard
 
+# Operating system
+PLATFORM = sys.platform
+PLATFORM_LINUX = ["linux", "linux2"]
+PLATFORM_WINDOWS = ["Windows", "win32", "cygwin"]
+PLATFORM_MAC = ["Mac", "darwin", "os2", "os2emx"]
 
 # Char color
 CHAR_COLOR = {
@@ -63,93 +68,88 @@ FRAME_STYLE = {
     "invisible"             : [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "]
 }
 
+# wrap if the text item can wrap, single if text item only should be displayed on a single line
+LINE_TYPE = {
+    "wrap"                  : 0,
+    "single"                : 1
+}
+
+# Orientations
+H_ORIENT = {
+    "Left"                  : 0,
+    "Right"                 : 1
+}
+V_ORIENT = {
+    "Up"                    : 0,
+    "Down"                  : 1
+}
+
+# Debug variables
+DBG_BOX_PLACEMENT = {
+    "Top"                   : 0,
+    "Bottom"                : 1
+}
+DBG_BOX_INFO = {
+    "name"                  : 0,
+    "textSize"              : 1,
+    "boxSize"               : 2
+}
+
+
 
 
 class TerminalTextBoxes():
     """  """
     def __init__(self, callback):
         """ Init. """
-        self.fakeKeyboard = Controller()
+        self.__fakeKeyboard = Controller()
 
         # Prompt callback function
-        self.promptCallbackFunction = callback
+        self.__promptCallbackFunction = callback
 
-        # Operating system
-        self.platform = sys.platform
-        self.platform_linux = ["linux", "linux2"]
-        self.platform_windows = ["Windows", "win32", "cygwin"]
-        self.platform_mac = ["Mac", "darwin", "os2", "os2emx"]
-
-        self.FRAME_SIZE = 1
+        self.__FRAME_SIZE = 1
 
         # Resize variables
-        self.resizeDone             = True
-        self.resizeTimer            = threading.Timer(.1, self.resize_timeout)
+        self.__resizeDone               = True
+        self.__resizeTimer              = threading.Timer(.1, self.__resize_timeout)
 
         # Terminal Box Setups
-        self.boxSetup               = dict()
-        self.activeBoxSetup         = None
+        self.__boxSetup                 = dict()
+        self.__activeBoxSetup           = None
 
         # Prompt variables
-        self.promptSign             = "> "
-        self.promptSignSize         = len(self.promptSign)
-        self.promptWidth            = None # Will be the same as self.wTerminal
-        self.promptHeight           = 1
-        self.promptLineWidth        = None # Will be self.wTerminal - (self.promptSignSize + 1)
-        self.promptString           = ""
-        self.promptCursorPos        = 0
-        self.promptVCursorPos       = 0
-        self.promptVLeftPos         = 0
-        self.promptVRightPos        = 0
+        self.__promptSign               = "> "
+        self.__promptSignSize           = len(self.__promptSign)
+        self.__promptWidth              = None # Will be the same as self.__wTerminal
+        self.__promptHeight             = 1
+        self.__promptLineWidth          = None # Will be self.__wTerminal - (self.__promptSignSize + 1)
+        self.__promptString             = ""
+        self.__promptCursorPos          = 0
+        self.__promptVCursorPos         = 0
+        self.__promptVLeftPos           = 0
+        self.__promptVRightPos          = 0
 
         # Prompt info box
-        self.infoPromptBg           = "═"
-        self.infoPromptBgAttr       = "white"
-        self.infoPromptTextAttr     = "yellow"
-        self.infoPromptHeight       = 1
-        self.infoPromptCurrMessage  = ""
-        self.infoPromptActive       = False
-        self.infoPromptTextIndent   = 3
-        self.infoPromptTimer        = threading.Timer(5, self.reset_info_prompt)
-
-        # wrap if the text item can wrap, single if text item only should be displayed on a single line
-        self.LINE_TYPE = {
-            "wrap"                  : 0,
-            "single"                : 1
-        }
+        self.__infoPromptBg             = "═"
+        self.__infoPromptBgAttr         = "white"
+        self.__infoPromptTextAttr       = "yellow"
+        self.__infoPromptHeight         = 1
+        self.__infoPromptCurrMessage    = ""
+        self.__infoPromptActive         = False
+        self.__infoPromptTextIndent     = 3
+        self.__infoPromptTimer          = threading.Timer(5, self.__reset_info_prompt)
 
         # Minimum sizes
-        self.PROMPT_MIN_WIDTH       = self.promptSignSize + 10
-        self.PROMPT_MIN_HEIGHT      = self.promptHeight
-        self.INFO_PROMPT_MIN_WIDTH  = self.infoPromptTextIndent * 2 + (2 + 5)
-        self.INFO_PROMPT_MIN_HEIGHT = self.infoPromptHeight
-        self.BOX_MIN_WIDTH          = (self.FRAME_SIZE * 2) + 1
-        self.BOX_MIN_HEIGHT         = (self.FRAME_SIZE * 2) + 1
+        self.__PROMPT_MIN_WIDTH         = self.__promptSignSize + 10
+        self.__PROMPT_MIN_HEIGHT        = self.__promptHeight
+        self.__INFO_PROMPT_MIN_WIDTH    = self.__infoPromptTextIndent * 2 + (2 + 5)
+        self.__INFO_PROMPT_MIN_HEIGHT   = self.__infoPromptHeight
+        self.__BOX_MIN_WIDTH            = (self.__FRAME_SIZE * 2) + 1
+        self.__BOX_MIN_HEIGHT           = (self.__FRAME_SIZE * 2) + 1
 
-        # Orientations
-        self.H_ORIENT = {
-            "Left"                  : 0,
-            "Right"                 : 1
-        }
-        self.V_ORIENT = {
-            "Up"                    : 0,
-            "Down"                  : 1
-        }
-
-        # Debug variables
-        self.debugBoxPlacement = {
-            "Top"                   : 0,
-            "Bottom"                : 1
-        }
-        self.debugBoxInfo = {
-            "name"                  : 0,
-            "textSize"              : 1,
-            "boxSize"               : 2
-        }
-
-        self.debug                  = True
-        self.debugBoxPlacementShow  = 0
-        self.debugBoxInfoShow       = 0
+        self.debug                      = True
+        self.dbgBoxPlacementShow        = 0
+        self.dbgBoxInfoShow             = 0
 
 
     ###################################################################################################################
@@ -159,18 +159,18 @@ class TerminalTextBoxes():
     def start(self):
         """ Start displaying the terminal text boxes module. """
         # Terminal window initialization
-        if not self.boxSetup:
+        if not self.__boxSetup:
             raise Exception("There are no setups created.")
-        if len(self.boxSetup[self.activeBoxSetup]["boxes"]) == 0:
+        if len(self.__boxSetup[self.__activeBoxSetup]["boxes"]) == 0:
             raise Exception("There are no boxes in the active box setup.")
 
-        self.screen = curses.initscr()
-        self.screen.keypad(True)
+        self.__screen = curses.initscr()
+        self.__screen.keypad(True)
         curses.noecho()
 
-        self.init_colors()
+        self.__init_colors()
 
-        self.update_boxes_frame_attr()
+        self.__update_boxes_frame_attr()
 
         self.update()
 
@@ -181,20 +181,20 @@ class TerminalTextBoxes():
 
     def stop(self):
         """ Stop displaying the terminal text boxes module. """
-        self.fakeKeyboard.press(Key.esc)
+        self.__fakeKeyboard.press(Key.esc)
 
 
     def create_text_box_setup(self, name):
         """ Creates a new 'text box setup' in which you can add text boxes to. """
         self.__check_box_setup_valid(name, False)
 
-        self.boxSetup[name] = {}
+        self.__boxSetup[name] = {}
 
-        self.boxSetup[name]["boxes"] = dict()
-        self.boxSetup[name]["boxOrder"] = list()
-        self.boxSetup[name]["focusedBox"] = None
+        self.__boxSetup[name]["boxes"] = dict()
+        self.__boxSetup[name]["boxOrder"] = list()
+        self.__boxSetup[name]["focusedBox"] = None
 
-        self.activeBoxSetup = name
+        self.__activeBoxSetup = name
 
 
     def create_text_box(self, setupName, boxName, width = None, height = None, hPos = None, vPos = 0, hOrient = 0,
@@ -249,67 +249,67 @@ class TerminalTextBoxes():
 
         if width != None and not isinstance(width, int):
             raise Exception("width is not of integer type.")
-        if width != None and width < self.BOX_MIN_WIDTH:
-            raise Exception(f"width is too small, must be bigger than or equal to {self.BOX_MIN_WIDTH}")
-        if width != None and width < (self.BOX_MIN_WIDTH + 2 * wTextIndent):
-            raise Exception(f"width is too small, must be bigger than or equal to {self.BOX_MIN_WIDTH + 2 * wTextIndent}")
-        self.boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = width
+        if width != None and width < self.__BOX_MIN_WIDTH:
+            raise Exception(f"width is too small, must be bigger than or equal to {self.__BOX_MIN_WIDTH}")
+        if width != None and width < (self.__BOX_MIN_WIDTH + 2 * wTextIndent):
+            raise Exception(f"width is too small, must be bigger than or equal to {self.__BOX_MIN_WIDTH + 2 * wTextIndent}")
+        self.__boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = width
 
         if height != None and not isinstance(height, int):
             raise Exception("height is not of integer type.")
-        if height != None and height < self.BOX_MIN_HEIGHT:
-            raise Exception(f"height is too small, must be bigger than or equal to {self.BOX_MIN_HEIGHT}")
-        if height != None and height < (self.BOX_MIN_HEIGHT + 2 * hTextIndent):
-            raise Exception(f"height is too small, must be bigger than or equal to {self.BOX_MIN_HEIGHT + 2 * hTextIndent}")
-        self.boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = height
+        if height != None and height < self.__BOX_MIN_HEIGHT:
+            raise Exception(f"height is too small, must be bigger than or equal to {self.__BOX_MIN_HEIGHT}")
+        if height != None and height < (self.__BOX_MIN_HEIGHT + 2 * hTextIndent):
+            raise Exception(f"height is too small, must be bigger than or equal to {self.__BOX_MIN_HEIGHT + 2 * hTextIndent}")
+        self.__boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = height
 
-        if not isinstance(hOrient, int) or hOrient not in self.H_ORIENT.values():
+        if not isinstance(hOrient, int) or hOrient not in H_ORIENT.values():
             raise Exception("hOrient is not of integer type or not within acceptable range.")
-        self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = hOrient
+        self.__boxSetup[setupName]["boxes"][boxName]["hOrient"] = hOrient
 
-        if not isinstance(vOrient, int) or vOrient not in self.V_ORIENT.values():
+        if not isinstance(vOrient, int) or vOrient not in V_ORIENT.values():
             raise Exception("vOrient is not of integer type or not within acceptable range.")
-        self.boxSetup[setupName]["boxes"][boxName]["vOrient"] = vOrient
+        self.__boxSetup[setupName]["boxes"][boxName]["vOrient"] = vOrient
 
         if hPos != None:
             if not isinstance(hPos, int):
                 raise Exception("hPos is not of integer type")
-            self.boxSetup[setupName]["boxOrder"].insert(hPos, boxName)
+            self.__boxSetup[setupName]["boxOrder"].insert(hPos, boxName)
 
-            if self.boxSetup[setupName]["boxOrder"].index(boxName) > 0:
-                prevBoxIndex = self.boxSetup[setupName]["boxOrder"].index(boxName) - 1
+            if self.__boxSetup[setupName]["boxOrder"].index(boxName) > 0:
+                prevBoxIndex = self.__boxSetup[setupName]["boxOrder"].index(boxName) - 1
             else:
                 prevBoxIndex = 0
 
-            self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = \
-                    self.boxSetup[setupName]["boxes"][self.boxSetup[setupName]["boxOrder"][prevBoxIndex]]["hOrient"]
+            self.__boxSetup[setupName]["boxes"][boxName]["hOrient"] = \
+                    self.__boxSetup[setupName]["boxes"][self.__boxSetup[setupName]["boxOrder"][prevBoxIndex]]["hOrient"]
 
             # TODO: fix vPos as well, check how big list is? (How deep vertical is)
-        elif hOrient == self.H_ORIENT["Left"]:
-            self.boxSetup[setupName]["boxOrder"].insert(0, boxName)
-        elif hOrient == self.H_ORIENT["Right"]:
-            self.boxSetup[setupName]["boxOrder"].append(boxName)
+        elif hOrient == H_ORIENT["Left"]:
+            self.__boxSetup[setupName]["boxOrder"].insert(0, boxName)
+        elif hOrient == H_ORIENT["Right"]:
+            self.__boxSetup[setupName]["boxOrder"].append(boxName)
         else:
-            self.boxSetup[setupName]["boxOrder"].append(boxName)
+            self.__boxSetup[setupName]["boxOrder"].append(boxName)
         # Sort dict according to boxOrder
-        self.boxSetup[setupName]["boxes"] = \
-                {key : self.boxSetup[setupName]["boxes"][key] for key in self.boxSetup[setupName]["boxOrder"]}
+        self.__boxSetup[setupName]["boxes"] = \
+                {key : self.__boxSetup[setupName]["boxes"][key] for key in self.__boxSetup[setupName]["boxOrder"]}
 
         if visable != True and visable != False:
             raise Exception("visable not a boolean.")
-        self.boxSetup[setupName]["boxes"][boxName]["visable"] = visable
+        self.__boxSetup[setupName]["boxes"][boxName]["visable"] = visable
 
         if  not isinstance(wTextIndent, int):
             raise Exception("wTextIndent is not of integer type.")
-        self.boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = wTextIndent
+        self.__boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = wTextIndent
         if not isinstance(hTextIndent, int):
             raise Exception("hTextIndent is not of integer type.")
-        self.boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = hTextIndent
+        self.__boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = hTextIndent
 
-        self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = frameChar
-        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = frameAttr
+        self.__boxSetup[setupName]["boxes"][boxName]["frameChar"] = frameChar
+        self.__boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = frameAttr
 
-        self.boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = scrollVisable
+        self.__boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = scrollVisable
 
 
     def set_info_prompt_message(self, message, timeout=None):
@@ -317,45 +317,45 @@ class TerminalTextBoxes():
         if not isinstance(message,str):
             raise Exception("Message needs to be of type str.")
 
-        self.reset_info_prompt()
+        self.__reset_info_prompt()
 
-        infoPromptY = self.hTerminal - 1 - self.promptHeight
-        textStartX = self.infoPromptTextIndent + 1
-        textMaxLen = self.wTerminal - (self.infoPromptTextIndent * 2) - 2
+        infoPromptY = self.__hTerminal - 1 - self.__promptHeight
+        textStartX = self.__infoPromptTextIndent + 1
+        textMaxLen = self.__wTerminal - (self.__infoPromptTextIndent * 2) - 2
         textEndX = textStartX + len(message[:textMaxLen])
 
-        self.infoPromptCurrMessage = message
-        bgAttr = self.merge_attributes(self.infoPromptBgAttr)
-        textAttr = self.merge_attributes(self.infoPromptTextAttr)
+        self.__infoPromptCurrMessage = message
+        bgAttr = self.__merge_attributes(self.__infoPromptBgAttr)
+        textAttr = self.__merge_attributes(self.__infoPromptTextAttr)
 
-        self.screen.addstr(infoPromptY, self.infoPromptTextIndent," ", bgAttr)
-        self.screen.addstr(infoPromptY, textStartX, message[:textMaxLen], textAttr)
-        self.screen.addstr(infoPromptY, textEndX," ", bgAttr)
+        self.__screen.addstr(infoPromptY, self.__infoPromptTextIndent," ", bgAttr)
+        self.__screen.addstr(infoPromptY, textStartX, message[:textMaxLen], textAttr)
+        self.__screen.addstr(infoPromptY, textEndX," ", bgAttr)
 
         if timeout != None:
-            self.infoPromptTimer.cancel()
-            self.infoPromptTimer = threading.Timer(timeout//1000, self.__info_prompt_text_timeout)
-            self.infoPromptTimer.start()
-            self.infoPromptActive = True
-        self.screen.refresh()
+            self.__infoPromptTimer.cancel()
+            self.__infoPromptTimer = threading.Timer(timeout//1000, self.__info_prompt_text_timeout)
+            self.__infoPromptTimer.start()
+            self.__infoPromptActive = True
+        self.__screen.refresh()
 
 
     def add_text_item(self, setupName, boxName, message, attributes="white", lineType="wrap"):
         """ Add a text item to the textItems list of messages. """
         self.__check_text_box_valid(setupName, boxName)
 
-        if self.boxSetup[setupName]["boxes"][boxName]["visable"] == False:
+        if self.__boxSetup[setupName]["boxes"][boxName]["visable"] == False:
             raise Exception(f"Can not add text item to an invisable box.")
 
-        attributes = self.merge_attributes(attributes)
+        attributes = self.__merge_attributes(attributes)
 
-        if lineType not in self.LINE_TYPE:
+        if lineType not in LINE_TYPE:
             raise Exception(f"Line type {lineType} does not exist.")
 
-        self.boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = \
-                len(self.boxSetup[setupName]["boxes"][boxName]["textItems"])
+        self.__boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = \
+                len(self.__boxSetup[setupName]["boxes"][boxName]["textItems"])
 
-        self.boxSetup[setupName]["boxes"][boxName]["textItems"].append([message, attributes, self.LINE_TYPE[lineType]])
+        self.__boxSetup[setupName]["boxes"][boxName]["textItems"].append([message, attributes, LINE_TYPE[lineType]])
 
 
     ###################################################################################################################
@@ -365,71 +365,71 @@ class TerminalTextBoxes():
     def update(self):
         """ Updates all. """
         # Used to verify that prompt/box sizes doesn't become smaller than min size.
-        self.edgeConditions = list()
+        self.__edgeConditions = list()
 
-        self.hTerminal, self.wTerminal = self.screen.getmaxyx() # Get the terminal size
+        self.__hTerminal, self.__wTerminal = self.__screen.getmaxyx() # Get the terminal size
 
         # Update the prompt variables (prompt size)
-        self.update_prompt_variables(False)
+        self.__update_prompt_variables(False)
 
         # Update box variables (box sizes)
-        self.update_box_variables(False)
+        self.__update_box_variables(False)
 
         # Update edge conditions
-        self.update_box_edge_condition()
+        self.__update_box_edge_conditions()
 
-        if self.updateConditionsSatisfied and self.resizeDone:
+        if self.__updateConditionsSatisfied and self.__resizeDone:
             # Update text format by re-wrapping text to match new box sizes
-            self.update_text_wrapping()
+            self.__update_text_wrapping()
 
             # Clear the screen
-            self.screen.clear()
+            self.__screen.clear()
 
             # Update all the boxes frames
-            self.update_box_frames()
+            self.__update_box_frames()
 
             # Update prompt
-            self.update_prompt()
+            self.__update_prompt()
 
             # Update all boxes
-            self.update_boxes()
+            self.__update_boxes()
 
             # Update boxes scrolls
-            self.update_boxes_scrolls()
+            self.__update_boxes_scrolls()
 
             # Update the visual cursor
-            self.update_visual_cursor()
-        elif not self.updateConditionsSatisfied and self.resizeDone:
-            self.screen.addstr(0,0, "Terminal too small.")
+            self.__update_visual_cursor()
+        elif not self.__updateConditionsSatisfied and self.__resizeDone:
+            self.__screen.addstr(0,0, "Terminal too small.")
 
-        self.screen.refresh()
+        self.__screen.refresh()
 
 
-    def update_prompt_variables(self, updateTerminal=True):
+    def __update_prompt_variables(self, updateTerminal=True):
         """ Update terminal variables such as box sizes. """
         if updateTerminal:
-            self.hTerminal, self.wTerminal = self.screen.getmaxyx() # Get the terminal size
+            self.__hTerminal, self.__wTerminal = self.__screen.getmaxyx() # Get the terminal size
 
-        self.promptWidth = self.wTerminal
-        self.promptLineWidth = self.wTerminal - (self.promptSignSize + 1)
+        self.__promptWidth = self.__wTerminal
+        self.__promptLineWidth = self.__wTerminal - (self.__promptSignSize + 1)
 
         # Edge conditions
-        self.edgeConditions.append(self.wTerminal >= self.PROMPT_MIN_WIDTH)
-        self.edgeConditions.append(self.hTerminal >= self.PROMPT_MIN_HEIGHT)
+        self.__edgeConditions.append(self.__wTerminal >= self.__PROMPT_MIN_WIDTH)
+        self.__edgeConditions.append(self.__hTerminal >= self.__PROMPT_MIN_HEIGHT)
 
-        self.updateConditionsSatisfied = all(condition == True for condition in self.edgeConditions)
+        self.__updateConditionsSatisfied = all(condition == True for condition in self.__edgeConditions)
 
 
-    def update_box_variables(self, updateTerminal=True):
+    def __update_box_variables(self, updateTerminal=True):
         """ Update terminal variables such as box sizes. """
         if updateTerminal:
-            self.hTerminal, self.wTerminal = self.screen.getmaxyx() # Get the terminal size
+            self.__hTerminal, self.__wTerminal = self.__screen.getmaxyx() # Get the terminal size
 
-        nbrOfBoxes = len(self.boxSetup[self.activeBoxSetup]["boxes"]) # Total amount of current boxes
+        nbrOfBoxes = len(self.__boxSetup[self.__activeBoxSetup]["boxes"]) # Total amount of current boxes
         nbrOfWUnfixedBoxes = 0      # Number of boxes that does not have fixed width
         nbrOfWFixedBoxes = 0        # Number of boxes that does have fixed width
         wForFixed = 0               # Width of all fixed width boxes together
-        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+        for name, attr in self.__boxSetup[self.__activeBoxSetup]["boxes"].items():
             if attr["fixedWidth"] == None:
                 nbrOfWUnfixedBoxes = nbrOfWUnfixedBoxes + 1
             else:
@@ -440,12 +440,12 @@ class TerminalTextBoxes():
         wForUnused = 0              # Remaining unused width
         if nbrOfWUnfixedBoxes > 0 and nbrOfWFixedBoxes > 0:     # Fixed and Unfixed boxes
             wForUnused = 0
-            wForUnfixed = self.wTerminal - wForFixed
+            wForUnfixed = self.__wTerminal - wForFixed
         elif nbrOfWUnfixedBoxes > 0 and nbrOfWFixedBoxes == 0:  # Unfixed boxes
             wForUnused = 0
-            wForUnfixed = self.wTerminal
+            wForUnfixed = self.__wTerminal
         elif nbrOfWUnfixedBoxes == 0 and nbrOfWFixedBoxes > 0:  # Fixed boxes
-            wForUnused = self.wTerminal - wForFixed
+            wForUnused = self.__wTerminal - wForFixed
             wForUnfixed = 0
 
         # Remaining width that is uneven between the none fixed width boxes.
@@ -457,7 +457,7 @@ class TerminalTextBoxes():
         wForUnusedUsed = False
         hForUnusedUsed = False
         prevVerticalOrientation = None
-        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+        for name, attr in self.__boxSetup[self.__activeBoxSetup]["boxes"].items():
             # Update prev variables
             attr["prevBoxWidth"] = attr["boxWidth"]
             attr["prevHeight"] = attr["boxHeight"]
@@ -467,24 +467,24 @@ class TerminalTextBoxes():
                 attr["boxWidth"] = (wForUnfixed // nbrOfWUnfixedBoxes) + (1 if remainingUnevenWidth > 0 else 0)
                 remainingUnevenWidth = (remainingUnevenWidth - 1) if remainingUnevenWidth > 0 else 0
             else:
-                attr["boxWidth"] = attr["fixedWidth"]# + (self.FRAME_SIZE * 2)
+                attr["boxWidth"] = attr["fixedWidth"]
             if attr["fixedHeight"] == None:
-                attr["boxHeight"] = self.hTerminal - (self.promptHeight + self.FRAME_SIZE)
+                attr["boxHeight"] = self.__hTerminal - (self.__promptHeight + self.__FRAME_SIZE)
             else:
                 attr["boxHeight"] = attr["fixedHeight"]
 
             # Text Width/ Height
-            frameTotalWidth = self.FRAME_SIZE * 2
+            frameTotalWidth = self.__FRAME_SIZE * 2
             attr["textWidth"] = attr["boxWidth"] - frameTotalWidth - (attr["wTextIndent"] * 2)
-            frameTotalHeight = (self.FRAME_SIZE * 2) + (2 if self.debug else 0)
+            frameTotalHeight = (self.__FRAME_SIZE * 2) + (2 if self.debug else 0)
             attr["textHeight"] = attr["boxHeight"] - frameTotalHeight - (attr["hTextIndent"] * 2)
 
             # Box orientation horizontal/ vertical
-            if attr["hOrient"] == self.H_ORIENT["Right"] and attr["fixedWidth"] != None and wForUnusedUsed == False:
+            if attr["hOrient"] == H_ORIENT["Right"] and attr["fixedWidth"] != None and wForUnusedUsed == False:
                 wIndex = wIndex + wForUnused
                 wForUnusedUsed = True
-            if attr["vOrient"] == self.V_ORIENT["Down"] and attr["fixedHeight"] != None and hForUnusedUsed == False:
-                hIndex = hIndex + (self.hTerminal - (self.promptHeight + self.FRAME_SIZE) - attr["boxHeight"])
+            if attr["vOrient"] == V_ORIENT["Down"] and attr["fixedHeight"] != None and hForUnusedUsed == False:
+                hIndex = hIndex + (self.__hTerminal - (self.__promptHeight + self.__FRAME_SIZE) - attr["boxHeight"])
                 hForUnusedUsed = True
 
             # topLeft point and bottomRight point of the box
@@ -492,31 +492,31 @@ class TerminalTextBoxes():
             attr["bottomRight"] = {"x" : wIndex + attr["boxWidth"] - 1, "y" : hIndex + attr["boxHeight"] - 1}
 
             # Text start/ end positions
-            attr["textStartX"] = wIndex + self.FRAME_SIZE + attr["wTextIndent"]
-            if self.debug and self.debugBoxPlacementShow == self.debugBoxPlacement["Top"]:
-                attr["textStartY"] = hIndex + 2 + self.FRAME_SIZE + attr["hTextIndent"]
+            attr["textStartX"] = wIndex + self.__FRAME_SIZE + attr["wTextIndent"]
+            if self.debug and self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Top"]:
+                attr["textStartY"] = hIndex + 2 + self.__FRAME_SIZE + attr["hTextIndent"]
             else:
-                attr["textStartY"] = hIndex + self.FRAME_SIZE + attr["hTextIndent"]
+                attr["textStartY"] = hIndex + self.__FRAME_SIZE + attr["hTextIndent"]
 
             hIndex = 0
             wIndex = wIndex + attr["boxWidth"]
 
             if attr["visable"] == False:
-                self.edgeConditions.append(attr["boxWidth"] >= (self.BOX_MIN_WIDTH + 2 * attr["wTextIndent"]))
-                self.edgeConditions.append(attr["boxHeight"] >= (self.BOX_MIN_HEIGHT + 2 * attr["hTextIndent"]))
+                self.__edgeConditions.append(attr["boxWidth"] >= (self.__BOX_MIN_WIDTH + 2 * attr["wTextIndent"]))
+                self.__edgeConditions.append(attr["boxHeight"] >= (self.__BOX_MIN_HEIGHT + 2 * attr["hTextIndent"]))
 
-        self.updateConditionsSatisfied = all(condition == True for condition in self.edgeConditions)
+        self.__updateConditionsSatisfied = all(condition == True for condition in self.__edgeConditions)
 
-        self.promptLineWidth = self.wTerminal - (len(self.promptSign) + 1)
+        self.__promptLineWidth = self.__wTerminal - (len(self.__promptSign) + 1)
 
 
-    def update_box_edge_condition(self):
+    def __update_box_edge_conditions(self):
         """  """
         boxesMinWidth = 0
-        boxesMinHeight = self.BOX_MIN_HEIGHT
-        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+        boxesMinHeight = self.__BOX_MIN_HEIGHT
+        for name, attr in self.__boxSetup[self.__activeBoxSetup]["boxes"].items():
             if attr["fixedWidth"] == None:
-                boxesMinWidth += (self.BOX_MIN_WIDTH + 2 * attr["wTextIndent"]) if attr["visable"] else 0
+                boxesMinWidth += (self.__BOX_MIN_WIDTH + 2 * attr["wTextIndent"]) if attr["visable"] else 0
             else:
                 boxesMinWidth += attr["boxWidth"] if attr["visable"] else 0
 
@@ -524,15 +524,15 @@ class TerminalTextBoxes():
                 if attr["boxHeight"] > boxesMinHeight:
                     boxesMinHeight = attr["boxHeight"]
 
-        self.edgeConditions.append(self.wTerminal >= boxesMinWidth)
-        self.edgeConditions.append(self.hTerminal >= (boxesMinHeight + self.INFO_PROMPT_MIN_HEIGHT + self.PROMPT_MIN_HEIGHT))
+        self.__edgeConditions.append(self.__wTerminal >= boxesMinWidth)
+        self.__edgeConditions.append(self.__hTerminal >= (boxesMinHeight + self.__INFO_PROMPT_MIN_HEIGHT + self.__PROMPT_MIN_HEIGHT))
 
-        self.updateConditionsSatisfied = all(condition == True for condition in self.edgeConditions)
+        self.__updateConditionsSatisfied = all(condition == True for condition in self.__edgeConditions)
 
 
-    def update_text_wrapping(self):
+    def __update_text_wrapping(self):
         """ Update text format by re-wrapping text to match new box sizes """
-        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+        for name, attr in self.__boxSetup[self.__activeBoxSetup]["boxes"].items():
             if attr["visable"] == False:
                 continue
 
@@ -541,20 +541,20 @@ class TerminalTextBoxes():
                     len(attr["textItems"]) != attr["prevTextItemsLength"]):
                 continue
 
-            self.boxSetup[self.activeBoxSetup]["boxes"][name]["lines"] = list()
+            self.__boxSetup[self.__activeBoxSetup]["boxes"][name]["lines"] = list()
             for item, txtAttr, lineType in attr["textItems"]:
-                if lineType == self.LINE_TYPE["single"]:
-                    self.boxSetup[self.activeBoxSetup]["boxes"][name]["lines"].append(
+                if lineType == LINE_TYPE["single"]:
+                    self.__boxSetup[self.__activeBoxSetup]["boxes"][name]["lines"].append(
                             [item[:attr["textWidth"]], txtAttr])
                 else:
                     lines = wrap(item, attr["textWidth"])
                     for line in lines:
-                        self.boxSetup[self.activeBoxSetup]["boxes"][name]["lines"].append([line, txtAttr])
+                        self.__boxSetup[self.__activeBoxSetup]["boxes"][name]["lines"].append([line, txtAttr])
 
 
-    def update_box_frames(self):
+    def __update_box_frames(self):
         """ Updates the frames for all the boxes as well as the bottom line that separate input bar from boxes. """
-        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+        for name, attr in self.__boxSetup[self.__activeBoxSetup]["boxes"].items():
             if attr["visable"] == False:
                 continue
 
@@ -563,88 +563,88 @@ class TerminalTextBoxes():
             boxBRX = attr["bottomRight"]["x"]
             boxBRY = attr["bottomRight"]["y"]
 
-            style = self.get_box_frame_char_dict(self.activeBoxSetup, name)
+            style = self.get_box_frame_char_dict(self.__activeBoxSetup, name)
 
-            if name == self.boxSetup[self.activeBoxSetup]["focusedBox"] and self.debug:
-                self.screen.addstr(boxTLY + 1, boxBRX - 1, "*", curses.color_pair(CHAR_COLOR["red"]))
+            if name == self.__boxSetup[self.__activeBoxSetup]["focusedBox"] and self.debug:
+                self.__screen.addstr(boxTLY + 1, boxBRX - 1, "*", curses.color_pair(CHAR_COLOR["red"]))
 
-            for row in range(self.hTerminal):
-                for column in range(self.wTerminal):
+            for row in range(self.__hTerminal):
+                for column in range(self.__wTerminal):
                     # DEBUG BOX ON THE TOP OF EVERY BOX
                     if (boxTLY + 2) == row and boxTLX == column and self.debug and \
-                            self.debugBoxPlacementShow == self.debugBoxPlacement["Top"]:
-                        self.screen.addstr(row, column, style["verticalRight"], attr["frameAttr"])
+                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Top"]:
+                        self.__screen.addstr(row, column, style["verticalRight"], attr["frameAttr"])
                     elif (boxTLY + 2) == row and boxBRX == column and self.debug and \
-                            self.debugBoxPlacementShow == self.debugBoxPlacement["Top"]:
-                        self.screen.addstr(row, column, style["verticalLeft"], attr["frameAttr"])
+                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Top"]:
+                        self.__screen.addstr(row, column, style["verticalLeft"], attr["frameAttr"])
                     elif (boxTLY + 2) == row and boxTLX < column and boxBRX > column and self.debug and \
-                            self.debugBoxPlacementShow == self.debugBoxPlacement["Top"]:
-                        self.screen.addstr(row, column, style["horizontal"], attr["frameAttr"])
+                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Top"]:
+                        self.__screen.addstr(row, column, style["horizontal"], attr["frameAttr"])
 
                     # DEBUG BOX ON THE BOTTOM OF EVERY BOX
                     elif (boxBRY - 2) == row and boxTLX == column and self.debug and \
-                            self.debugBoxPlacementShow == self.debugBoxPlacement["Bottom"]:
-                        self.screen.addstr(row, column, style["verticalRight"], attr["frameAttr"])
+                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Bottom"]:
+                        self.__screen.addstr(row, column, style["verticalRight"], attr["frameAttr"])
                     elif (boxBRY - 2) == row and boxBRX == column and self.debug and \
-                            self.debugBoxPlacementShow == self.debugBoxPlacement["Bottom"]:
-                        self.screen.addstr(row, column, style["verticalLeft"], attr["frameAttr"])
+                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Bottom"]:
+                        self.__screen.addstr(row, column, style["verticalLeft"], attr["frameAttr"])
                     elif (boxBRY - 2) == row and boxTLX < column and boxBRX > column and self.debug \
-                            and self.debugBoxPlacementShow == self.debugBoxPlacement["Bottom"]:
-                        self.screen.addstr(row, column, style["horizontal"], attr["frameAttr"])
+                            and self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Bottom"]:
+                        self.__screen.addstr(row, column, style["horizontal"], attr["frameAttr"])
 
                     # NORMAL BOX FRAME
                     elif boxTLY == row and boxTLX == column:
-                        self.screen.addstr(row, column, style["rightDown"], attr["frameAttr"])
+                        self.__screen.addstr(row, column, style["rightDown"], attr["frameAttr"])
                     elif boxTLY == row and boxBRX == column:
-                        self.screen.addstr(row, column, style["leftDown"], attr["frameAttr"])
+                        self.__screen.addstr(row, column, style["leftDown"], attr["frameAttr"])
                     elif boxBRY == row and boxTLX == column:
-                        self.screen.addstr(row, column, style["rightUp"], attr["frameAttr"])
+                        self.__screen.addstr(row, column, style["rightUp"], attr["frameAttr"])
                     elif boxBRY == row and boxBRX == column:
-                        self.screen.addstr(row, column, style["leftUp"], attr["frameAttr"])
+                        self.__screen.addstr(row, column, style["leftUp"], attr["frameAttr"])
                     elif (boxTLY == row or boxBRY == row) and boxTLX < column and boxBRX > column:
-                        self.screen.addstr(row, column, style["horizontal"], attr["frameAttr"])
+                        self.__screen.addstr(row, column, style["horizontal"], attr["frameAttr"])
                     elif boxTLY < row and boxBRY > row and (boxTLX == column or boxBRX == column):
-                        self.screen.addstr(row, column, style["vertical"], attr["frameAttr"])
+                        self.__screen.addstr(row, column, style["vertical"], attr["frameAttr"])
 
             if self.debug:
                 x = boxTLX + 1
-                y = (boxTLY + 1) if self.debugBoxPlacementShow == self.debugBoxPlacement["Top"] else (boxBRY - 1)
-                if self.debugBoxInfoShow == self.debugBoxInfo["name"]:
-                    self.screen.addstr(y, x, name[:(attr["boxWidth"] - 1 - self.FRAME_SIZE)])
-                elif self.debugBoxInfoShow == self.debugBoxInfo["textSize"]:
+                y = (boxTLY + 1) if self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Top"] else (boxBRY - 1)
+                if self.dbgBoxInfoShow == DBG_BOX_INFO["name"]:
+                    self.__screen.addstr(y, x, name[:(attr["boxWidth"] - 1 - self.__FRAME_SIZE)])
+                elif self.dbgBoxInfoShow == DBG_BOX_INFO["textSize"]:
                     textSize = f'txt: w = {attr["textWidth"]}, h = {attr["textHeight"]}'
-                    self.screen.addstr(y, x, textSize[:(attr["boxWidth"] - 1 - self.FRAME_SIZE)])
-                elif self.debugBoxInfoShow == self.debugBoxInfo["boxSize"]:
+                    self.__screen.addstr(y, x, textSize[:(attr["boxWidth"] - 1 - self.__FRAME_SIZE)])
+                elif self.dbgBoxInfoShow == DBG_BOX_INFO["boxSize"]:
                     boxSize = f'box: w = {attr["boxWidth"]}, h = {attr["boxHeight"]}'
-                    self.screen.addstr(y, x, boxSize[:(attr["boxWidth"] - 1 - self.FRAME_SIZE)])
+                    self.__screen.addstr(y, x, boxSize[:(attr["boxWidth"] - 1 - self.__FRAME_SIZE)])
 
-        if not self.infoPromptActive:
-            self.reset_info_prompt()
+        if not self.__infoPromptActive:
+            self.__reset_info_prompt()
         else:
-            self.set_info_prompt_message(self.infoPromptCurrMessage)
+            self.set_info_prompt_message(self.__infoPromptCurrMessage)
 
 
-    def update_prompt(self):
+    def __update_prompt(self):
         """ Update the prompt. """
-        self.promptVLeftPos = self.promptCursorPos - self.promptVCursorPos
-        self.promptVRightPos = self.promptVLeftPos + self.promptLineWidth
+        self.__promptVLeftPos = self.__promptCursorPos - self.__promptVCursorPos
+        self.__promptVRightPos = self.__promptVLeftPos + self.__promptLineWidth
 
         # Clear prompt
-        txt = " " * (self.wTerminal - 1)
-        for i in range(self.promptHeight):
-            self.screen.addstr(self.hTerminal - self.promptHeight - i, 0, txt)
+        txt = " " * (self.__wTerminal - 1)
+        for i in range(self.__promptHeight):
+            self.__screen.addstr(self.__hTerminal - self.__promptHeight - i, 0, txt)
 
         displayedString = ""
-        if len(self.promptString) >= self.promptLineWidth:
-            displayedString = self.promptString[self.promptVLeftPos:self.promptVRightPos]
+        if len(self.__promptString) >= self.__promptLineWidth:
+            displayedString = self.__promptString[self.__promptVLeftPos:self.__promptVRightPos]
         else:
-            displayedString = self.promptString
-        self.screen.addstr(self.hTerminal - self.promptHeight, 0, self.promptSign + displayedString)
+            displayedString = self.__promptString
+        self.__screen.addstr(self.__hTerminal - self.__promptHeight, 0, self.__promptSign + displayedString)
 
 
-    def update_boxes(self):
+    def __update_boxes(self):
         """ Updates all the boxes. """
-        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+        for name, attr in self.__boxSetup[self.__activeBoxSetup]["boxes"].items():
             if attr["visable"] == False:
                 continue
 
@@ -655,12 +655,12 @@ class TerminalTextBoxes():
                 displayedText = attr["lines"]
 
             for i, line in enumerate(displayedText):
-                self.screen.addstr(attr["textStartY"] + i, attr["textStartX"], line[0], line[1])
+                self.__screen.addstr(attr["textStartY"] + i, attr["textStartX"], line[0], line[1])
 
 
-    def update_boxes_scrolls(self):
+    def __update_boxes_scrolls(self):
         """  """
-        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+        for name, attr in self.__boxSetup[self.__activeBoxSetup]["boxes"].items():
             if attr["visable"] == False:
                 continue
 
@@ -680,19 +680,19 @@ class TerminalTextBoxes():
                 endY = boundaryEnd - int(scrollBoundary * (below / len(attr["lines"])))
 
                 for row in range(startY, endY):
-                    self.screen.addstr(row, attr["bottomRight"]["x"], attr["scrollChar"], attr["frameAttr"])
+                    self.__screen.addstr(row, attr["bottomRight"]["x"], attr["scrollChar"], attr["frameAttr"])
 
 
-    def update_visual_cursor(self):
+    def __update_visual_cursor(self):
         """ Update the visual cursor in the prompt. """
-        self.screen.move(self.hTerminal - self.promptHeight, self.promptVCursorPos + len(self.promptSign))
+        self.__screen.move(self.__hTerminal - self.__promptHeight, self.__promptVCursorPos + len(self.__promptSign))
 
 
-    def update_boxes_frame_attr(self):
+    def __update_boxes_frame_attr(self):
         """  """
-        for setupName, setupAttr in self.boxSetup.items():
+        for setupName, setupAttr in self.__boxSetup.items():
             for boxName, boxAttr in setupAttr["boxes"].items():
-                boxAttr["frameAttr"] = self.merge_attributes(boxAttr["frameAttrUnmerged"])
+                boxAttr["frameAttr"] = self.__merge_attributes(boxAttr["frameAttrUnmerged"])
 
 
     ###################################################################################################################
@@ -703,24 +703,24 @@ class TerminalTextBoxes():
         """  """
         self.__check_box_setup_valid(setupName)
 
-        self.activeBoxSetup = setupName
+        self.__activeBoxSetup = setupName
 
 
     def set_focus_box(self, setupName, boxName):
         """ Set a box in focus i.e. make it scrollable. """
         self.__check_text_box_valid(setupName, boxName)
 
-        if self.boxSetup[setupName]["boxes"][boxName]["visable"] == False:
+        if self.__boxSetup[setupName]["boxes"][boxName]["visable"] == False:
             raise Exception(f"Can not set focus on an invisible box.")
 
-        self.boxSetup[setupName]["focusedBox"] = boxName
+        self.__boxSetup[setupName]["focusedBox"] = boxName
 
 
     def set_box_scroll_visable(self, setupName, boxName, value):
         """  """
         self.__check_text_box_valid(setupName, boxName)
 
-        self.boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = value
+        self.__boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = value
 
 
     def set_box_frame_char(self, setupName, boxName, char):
@@ -732,14 +732,14 @@ class TerminalTextBoxes():
         if char not in FRAME_STYLE:
             raise Exception(f"{char} not in FRAME_STYLE.")
 
-        self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = char
+        self.__boxSetup[setupName]["boxes"][boxName]["frameChar"] = char
 
 
     def get_box_frame_char_dict(self, setupName, boxName):
         """  """
         self.__check_text_box_valid(setupName, boxName)
 
-        style = self.boxSetup[setupName]["boxes"][boxName]["frameChar"]
+        style = self.__boxSetup[setupName]["boxes"][boxName]["frameChar"]
 
         frame = {
             "vertical"              : FRAME_STYLE[style][0],
@@ -762,7 +762,7 @@ class TerminalTextBoxes():
         """  """
         self.__check_text_box_valid(setupName, boxName)
 
-        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = attributes
+        self.__boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = attributes
 
 
     ###################################################################################################################
@@ -772,9 +772,9 @@ class TerminalTextBoxes():
     def __key_handler(self, event):
         """ Handler of key presses. """
         while True:
-            char = self.screen.get_wch()
+            char = self.__screen.get_wch()
 
-            focusedBox = self.boxSetup[self.activeBoxSetup]["focusedBox"]
+            focusedBox = self.__boxSetup[self.__activeBoxSetup]["focusedBox"]
 
             # GENERAL KEY EVENTS --------------------------------------------------------------------------------------
             if char == "\x1b":                  # <ESC> KEY (Exit)
@@ -784,159 +784,159 @@ class TerminalTextBoxes():
                 pass
 
             elif char == curses.KEY_RESIZE:     # RESIZE EVENT
-                self.promptCursorPos = 0
-                self.promptVCursorPos = 0
+                self.__promptCursorPos = 0
+                self.__promptVCursorPos = 0
 
-                if self.resizeDone:
-                    self.screen.clear()
+                if self.__resizeDone:
+                    self.__screen.clear()
 
-                self.resizeDone = False
-                self.resizeTimer.cancel()
-                self.resizeTimer = threading.Timer(.1, self.resize_timeout)
-                self.resizeTimer.start()
+                self.__resizeDone = False
+                self.__resizeTimer.cancel()
+                self.__resizeTimer = threading.Timer(.1, self.__resize_timeout)
+                self.__resizeTimer.start()
 
 
             # PROMPT KEY EVENTS ---------------------------------------------------------------------------------------
             elif char == 260:                   # <ARROW-LEFT> KEY (Scroll left)
-                if self.promptVCursorPos != 0:
-                    self.promptVCursorPos -= 1
-                if self.promptCursorPos != 0:
-                    self.promptCursorPos -= 1
+                if self.__promptVCursorPos != 0:
+                    self.__promptVCursorPos -= 1
+                if self.__promptCursorPos != 0:
+                    self.__promptCursorPos -= 1
 
-                if self.resizeDone:
-                    self.update_prompt()
-                    self.update_visual_cursor()
+                if self.__resizeDone:
+                    self.__update_prompt()
+                    self.__update_visual_cursor()
                     continue
 
             elif char == 261:                   # <ARROW-RIGHT> KEY (Scroll right)
-                if self.promptVCursorPos < len(self.promptString) and \
-                   self.promptVCursorPos != self.promptLineWidth:
-                    self.promptVCursorPos += 1
-                if self.promptCursorPos < len(self.promptString):
-                    self.promptCursorPos += 1
+                if self.__promptVCursorPos < len(self.__promptString) and \
+                   self.__promptVCursorPos != self.__promptLineWidth:
+                    self.__promptVCursorPos += 1
+                if self.__promptCursorPos < len(self.__promptString):
+                    self.__promptCursorPos += 1
 
-                if self.resizeDone:
-                    self.update_prompt()
-                    self.update_visual_cursor()
+                if self.__resizeDone:
+                    self.__update_prompt()
+                    self.__update_visual_cursor()
                     continue
 
             elif char == 262:                   # HOME KEY
-                self.promptVCursorPos = 0
-                self.promptCursorPos = 0
+                self.__promptVCursorPos = 0
+                self.__promptCursorPos = 0
 
-                if self.resizeDone:
-                    self.update_prompt()
-                    self.update_visual_cursor()
+                if self.__resizeDone:
+                    self.__update_prompt()
+                    self.__update_visual_cursor()
                     continue
 
             elif char == 358 or char == 360:    # END KEY
-                if len(self.promptString) >= self.promptLineWidth:
-                    self.promptVCursorPos = self.promptLineWidth
+                if len(self.__promptString) >= self.__promptLineWidth:
+                    self.__promptVCursorPos = self.__promptLineWidth
                 else:
-                    self.promptVCursorPos = len(self.promptString)
-                self.promptCursorPos = len(self.promptString)
+                    self.__promptVCursorPos = len(self.__promptString)
+                self.__promptCursorPos = len(self.__promptString)
 
-                if self.resizeDone:
-                    self.update_prompt()
-                    self.update_visual_cursor()
+                if self.__resizeDone:
+                    self.__update_prompt()
+                    self.__update_visual_cursor()
                     continue
 
             elif char == 330:                   # DELETE KEY
-                self.promptString = self.promptString[:self.promptCursorPos] + \
-                    self.promptString[self.promptCursorPos:][1:]
+                self.__promptString = self.__promptString[:self.__promptCursorPos] + \
+                    self.__promptString[self.__promptCursorPos:][1:]
 
-                if len(self.promptString) >= self.promptLineWidth:
-                    if len(self.promptString) == (self.promptVRightPos - 1) and \
-                       self.promptVCursorPos != self.promptLineWidth:
-                        self.promptVCursorPos += 1
+                if len(self.__promptString) >= self.__promptLineWidth:
+                    if len(self.__promptString) == (self.__promptVRightPos - 1) and \
+                       self.__promptVCursorPos != self.__promptLineWidth:
+                        self.__promptVCursorPos += 1
 
-                if self.resizeDone:
-                    self.update_prompt()
-                    self.update_visual_cursor()
+                if self.__resizeDone:
+                    self.__update_prompt()
+                    self.__update_visual_cursor()
                     continue
 
             elif char == "\x08" or char == 263: # BACKSPACE KEY
-                self.promptString = self.promptString[:self.promptCursorPos][:-1] + \
-                    self.promptString[self.promptCursorPos:]
+                self.__promptString = self.__promptString[:self.__promptCursorPos][:-1] + \
+                    self.__promptString[self.__promptCursorPos:]
 
-                if self.promptVCursorPos != 0 and len(self.promptString) <= self.promptLineWidth and \
-                   self.promptVLeftPos == 0:
-                    self.promptVCursorPos -= 1
-                elif self.promptVCursorPos != 0 and len(self.promptString) >= self.promptLineWidth and \
-                     self.promptVLeftPos == 0:
-                    self.promptVCursorPos -= 1
-                if self.promptCursorPos != 0:
-                    self.promptCursorPos -= 1
+                if self.__promptVCursorPos != 0 and len(self.__promptString) <= self.__promptLineWidth and \
+                   self.__promptVLeftPos == 0:
+                    self.__promptVCursorPos -= 1
+                elif self.__promptVCursorPos != 0 and len(self.__promptString) >= self.__promptLineWidth and \
+                     self.__promptVLeftPos == 0:
+                    self.__promptVCursorPos -= 1
+                if self.__promptCursorPos != 0:
+                    self.__promptCursorPos -= 1
 
-                if self.resizeDone:
-                    self.update_prompt()
-                    self.update_visual_cursor()
+                if self.__resizeDone:
+                    self.__update_prompt()
+                    self.__update_visual_cursor()
                     continue
 
             elif char == "\x16":                # CTRL + V (paste)
-                copy = self.get_clipboard()
+                copy = self.__get_clipboard()
                 if copy != None and copy != False:
-                    self.promptString = self.promptString[:self.promptCursorPos] + copy + self.promptString[self.promptCursorPos:]
-                    self.promptCursorPos += len(copy)
-                    if (self.promptVCursorPos + len(copy)) >= self.promptLineWidth:
-                        self.promptVCursorPos = self.promptLineWidth
+                    self.__promptString = self.__promptString[:self.__promptCursorPos] + copy + self.__promptString[self.__promptCursorPos:]
+                    self.__promptCursorPos += len(copy)
+                    if (self.__promptVCursorPos + len(copy)) >= self.__promptLineWidth:
+                        self.__promptVCursorPos = self.__promptLineWidth
                     else:
-                        self.promptVCursorPos += len(copy)
+                        self.__promptVCursorPos += len(copy)
 
-                if self.resizeDone:
-                    self.update_prompt()
-                    self.update_visual_cursor()
+                if self.__resizeDone:
+                    self.__update_prompt()
+                    self.__update_visual_cursor()
                     continue
 
             elif char == "\n": # <ENTER>
-                if self.promptString != "":
-                    self.promptCallbackFunction(self.promptString)
-                self.promptString = ""
-                self.promptCursorPos = 0
-                self.promptVCursorPos = 0
+                if self.__promptString != "":
+                    self.__promptCallbackFunction(self.__promptString)
+                self.__promptString = ""
+                self.__promptCursorPos = 0
+                self.__promptVCursorPos = 0
                 # TEMP
-                self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = 0
+                self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = 0
 
 
             # BOX KEY EVENTS ------------------------------------------------------------------------------------------
             elif char == 259:                   # <ARROW-UP> KEY (Scroll up)
-                lines = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["lines"]
-                scrollIndex = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"]
-                textHeight = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["textHeight"]
+                lines = self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["lines"]
+                scrollIndex = self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"]
+                textHeight = self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["textHeight"]
                 if len(lines) + scrollIndex > textHeight:
-                    self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] -= 1
+                    self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] -= 1
 
             elif char == 258:                   # <ARROW-DOWN> KEY (Scroll down)
-                if self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] != 0:
-                    self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] += 1
+                if self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] != 0:
+                    self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] += 1
 
             elif char == 339:                   # PAGE UP (Scroll up)
-                lines = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["lines"]
-                textHeight = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["textHeight"]
-                self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] -= textHeight
-                scrollIndex = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"]
+                lines = self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["lines"]
+                textHeight = self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["textHeight"]
+                self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] -= textHeight
+                scrollIndex = self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"]
                 if scrollIndex < -(len(lines) - textHeight):
-                    self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = -(len(lines) - textHeight)
+                    self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = -(len(lines) - textHeight)
 
             elif char == 338:                   # PAGE DOWN (Scroll down)
-                textHeight = self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["textHeight"]
-                self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] += textHeight
-                if self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] > 0:
-                    self.boxSetup[self.activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = 0
+                textHeight = self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["textHeight"]
+                self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] += textHeight
+                if self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] > 0:
+                    self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = 0
 
 
             # REGULAR ASCII KEY EVENTS --------------------------------------------------------------------------------
-            else: # Append characters to self.promptString
+            else: # Append characters to self.__promptString
                 if isUnicode(char):
-                    self.promptString =   self.promptString[:self.promptCursorPos] + str(char) + \
-                        self.promptString[self.promptCursorPos:]
-                    if self.promptVCursorPos != self.promptLineWidth:
-                        self.promptVCursorPos += 1
-                    self.promptCursorPos += 1
+                    self.__promptString =   self.__promptString[:self.__promptCursorPos] + str(char) + \
+                        self.__promptString[self.__promptCursorPos:]
+                    if self.__promptVCursorPos != self.__promptLineWidth:
+                        self.__promptVCursorPos += 1
+                    self.__promptCursorPos += 1
 
-                if self.resizeDone:
-                    self.update_prompt()
-                    self.update_visual_cursor()
+                if self.__resizeDone:
+                    self.__update_prompt()
+                    self.__update_visual_cursor()
                     continue
 
             self.update()
@@ -948,7 +948,7 @@ class TerminalTextBoxes():
     # OTHER FUNCTIONS                                                                                                 #
     ###################################################################################################################
 
-    def init_colors(self):
+    def __init_colors(self):
         """ Init curses colors. """
         curses.start_color()
         curses.use_default_colors()
@@ -959,59 +959,59 @@ class TerminalTextBoxes():
 
     def __init_box_default_parameters(self, setupName, boxName):
         """  """
-        self.boxSetup[setupName]["boxes"][boxName] = dict()
-        self.boxSetup[setupName]["focusedBox"] = boxName
+        self.__boxSetup[setupName]["boxes"][boxName] = dict()
+        self.__boxSetup[setupName]["focusedBox"] = boxName
 
-        self.boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["hOrient"] = self.H_ORIENT["Left"]
-        self.boxSetup[setupName]["boxes"][boxName]["vOrient"] = self.V_ORIENT["Up"]
-        self.boxSetup[setupName]["boxes"][boxName]["visable"] = True
-        self.boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = 0
-        self.boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = 0
-        self.boxSetup[setupName]["boxes"][boxName]["boxWidth"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["boxHeight"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["prevBoxWidth"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["prevBoxHeight"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["textWidth"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["textHeight"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["topLeft"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["bottomRight"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["textStartX"] = 0
-        self.boxSetup[setupName]["boxes"][boxName]["textStartY"] = 0
-        self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = "white"
-        self.boxSetup[setupName]["boxes"][boxName]["frameAttr"] = None
-        self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = "singleLine"
+        self.__boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = None
+        self.__boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = None
+        self.__boxSetup[setupName]["boxes"][boxName]["hOrient"] = H_ORIENT["Left"]
+        self.__boxSetup[setupName]["boxes"][boxName]["vOrient"] = V_ORIENT["Up"]
+        self.__boxSetup[setupName]["boxes"][boxName]["visable"] = True
+        self.__boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = 0
+        self.__boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = 0
+        self.__boxSetup[setupName]["boxes"][boxName]["boxWidth"] = None
+        self.__boxSetup[setupName]["boxes"][boxName]["boxHeight"] = None
+        self.__boxSetup[setupName]["boxes"][boxName]["prevBoxWidth"] = None
+        self.__boxSetup[setupName]["boxes"][boxName]["prevBoxHeight"] = None
+        self.__boxSetup[setupName]["boxes"][boxName]["textWidth"] = None
+        self.__boxSetup[setupName]["boxes"][boxName]["textHeight"] = None
+        self.__boxSetup[setupName]["boxes"][boxName]["topLeft"] = None
+        self.__boxSetup[setupName]["boxes"][boxName]["bottomRight"] = None
+        self.__boxSetup[setupName]["boxes"][boxName]["textStartX"] = 0
+        self.__boxSetup[setupName]["boxes"][boxName]["textStartY"] = 0
+        self.__boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = "white"
+        self.__boxSetup[setupName]["boxes"][boxName]["frameAttr"] = None
+        self.__boxSetup[setupName]["boxes"][boxName]["frameChar"] = "singleLine"
 
-        self.boxSetup[setupName]["boxes"][boxName]["textItems"] = list()
-        self.boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = 0
-        self.boxSetup[setupName]["boxes"][boxName]["lines"] = list()
-        self.boxSetup[setupName]["boxes"][boxName]["scrollIndex"] = 0
+        self.__boxSetup[setupName]["boxes"][boxName]["textItems"] = list()
+        self.__boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = 0
+        self.__boxSetup[setupName]["boxes"][boxName]["lines"] = list()
+        self.__boxSetup[setupName]["boxes"][boxName]["scrollIndex"] = 0
 
-        self.boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = True
-        self.boxSetup[setupName]["boxes"][boxName]["scrollChar"] = "█"
+        self.__boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = True
+        self.__boxSetup[setupName]["boxes"][boxName]["scrollChar"] = "█"
 
 
-    def reset_info_prompt(self):
+    def __reset_info_prompt(self):
         """  """
         startOfInfoPromptX = 0
-        startOfInfoPromptY = self.hTerminal - 1 - self.promptHeight
-        bg = self.merge_attributes(self.infoPromptBgAttr)
-        self.screen.addstr(startOfInfoPromptY, startOfInfoPromptX, self.wTerminal * self.infoPromptBg, bg)
+        startOfInfoPromptY = self.__hTerminal - 1 - self.__promptHeight
+        bg = self.__merge_attributes(self.__infoPromptBgAttr)
+        self.__screen.addstr(startOfInfoPromptY, startOfInfoPromptX, self.__wTerminal * self.__infoPromptBg, bg)
 
 
-    def get_clipboard(self):
+    def __get_clipboard(self):
         """ Get system clipboard. """
         clipboard = None
 
-        if self.platform in self.platform_windows:
+        if PLATFORM in PLATFORM_WINDOWS:
             win32clipboard.OpenClipboard()
             clipboard = win32clipboard.GetClipboardData()
             win32clipboard.CloseClipboard()
 
-        elif self.platform in self.platform_linux:
+        elif PLATFORM in PLATFORM_LINUX:
             pass
-        elif self.platform in self.platform_mac:
+        elif PLATFORM in PLATFORM_MAC:
             pass
         else:
             return False
@@ -1021,21 +1021,21 @@ class TerminalTextBoxes():
 
     def __info_prompt_text_timeout(self):
         """  """
-        self.infoPromptActive = False
-        self.reset_info_prompt()
-        self.update_visual_cursor()
-        self.screen.refresh()
+        self.__infoPromptActive = False
+        self.__reset_info_prompt()
+        self.__update_visual_cursor()
+        self.__screen.refresh()
 
 
-    def resize_timeout(self):
+    def __resize_timeout(self):
         """  """
-        self.resizeDone = True
-        self.screen.clear()
-        self.screen.refresh()
+        self.__resizeDone = True
+        self.__screen.clear()
+        self.__screen.refresh()
         self.update()
 
 
-    def merge_attributes(self, attributes):
+    def __merge_attributes(self, attributes):
         """ Merges all attribute values to a single attribute and returns it.
             Raises exception if invalid attribute exist.
         """
@@ -1061,15 +1061,15 @@ class TerminalTextBoxes():
 
 
     def __check_box_setup_valid(self, setupName, shouldExist=True):
-        """ Check to see if the given setupBox exist or does not exist in the self.boxSetup dict. """
+        """ Check to see if the given setupBox exist or does not exist in the self.__boxSetup dict. """
         if not isinstance(setupName, str):
             raise Exception("setupName is not of string type.")
 
         if shouldExist:
-            if setupName not in self.boxSetup:
+            if setupName not in self.__boxSetup:
                 raise Exception(f"Box setup {name} does not exist.")
         else:
-            if setupName in self.boxSetup:
+            if setupName in self.__boxSetup:
                 raise Exception(f"Box setup {name} already exist.")
 
 
@@ -1081,10 +1081,10 @@ class TerminalTextBoxes():
             raise Exception("name is not of string type.")
 
         if shouldExist:
-            if boxName not in self.boxSetup[setupName]["boxes"]:
+            if boxName not in self.__boxSetup[setupName]["boxes"]:
                 raise Exception(f"TextBox {boxName} does not exist.")
         else:
-            if boxName in self.boxSetup[setupName]["boxes"]:
+            if boxName in self.__boxSetup[setupName]["boxes"]:
                 raise Exception(f"TextBox {boxName} already exist.")
 
 
@@ -1103,7 +1103,7 @@ class TestTextBox():
         self.tb.create_text_box_setup("setup")
 
         self.tb.create_text_box("setup", "text", frameAttr="green", wTextIndent=1)
-        self.tb.create_text_box("setup", "info", 20, frameAttr="red", hOrient=self.tb.H_ORIENT["Right"])
+        self.tb.create_text_box("setup", "info", 20, frameAttr="red", hOrient=H_ORIENT["Right"])
 
         self.tb.set_focus_box("setup", "text")
 
