@@ -225,6 +225,9 @@ class TerminalTextBoxes():
             # Update all boxes
             self.update_boxes()
 
+            # Update boxes scrolls
+            self.update_boxes_scrolls()
+
             # Update the visual cursor
             self.update_visual_cursor()
         elif not self.updateConditionsSatisfied and self.resizeDone:
@@ -487,6 +490,31 @@ class TerminalTextBoxes():
                 self.screen.addstr(attr["textStartY"] + i, attr["textStartX"], line[0], line[1])
 
 
+    def update_boxes_scrolls(self):
+        """  """
+        for name, attr in self.boxSetup[self.activeBoxSetup]["boxes"].items():
+            if attr["visable"] == False:
+                continue
+
+            if not attr["scrollVisable"]:
+                continue
+
+            scrollBoundary = attr["textHeight"] + (attr["hTextIndent"] * 2)
+
+            if len(attr["lines"]) >= attr["textHeight"]:
+                boundaryStart = attr["textStartY"] - attr["hTextIndent"]
+                boundaryEnd = attr["textStartY"] + attr["textHeight"] + attr["hTextIndent"]
+
+                below = -attr["scrollIndex"] if attr["scrollIndex"] < 0 else 0
+                above = len(attr["lines"]) - (below + attr["textHeight"])
+
+                startY = int(scrollBoundary * (above / len(attr["lines"]))) + boundaryStart
+                endY = boundaryEnd - int(scrollBoundary * (below / len(attr["lines"])))
+
+                for row in range(startY, endY):
+                    self.screen.addstr(row, attr["bottomRight"]["x"], attr["scrollChar"], attr["frameAttr"])
+
+
     def update_visual_cursor(self):
         """ Update the visual cursor in the prompt. """
         self.screen.move(self.hTerminal - self.promptHeight, self.promptVCursorPos + len(self.promptSign))
@@ -551,7 +579,7 @@ class TerminalTextBoxes():
 
     def create_text_box(self, setupName, boxName, width = None, height = None, hPos = None, vPos = 0, hOrient = 0,
                         vOrient = 0, visable = True, wTextIndent = 0, hTextIndent = 0, frameChar="singleLine",
-                        frameAttr="white"):
+                        frameAttr="white", scrollVisable=True):
         """
             Input parameters:
                 setupName           - Name of the box setup that the box belongs to.
@@ -661,6 +689,8 @@ class TerminalTextBoxes():
         self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = frameChar
         self.boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = frameAttr
 
+        self.boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = scrollVisable
+
 
     def __init_box_default_parameters(self, setupName, boxName):
         """  """
@@ -692,6 +722,16 @@ class TerminalTextBoxes():
         self.boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = 0
         self.boxSetup[setupName]["boxes"][boxName]["lines"] = list()
         self.boxSetup[setupName]["boxes"][boxName]["scrollIndex"] = 0
+
+        self.boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = True
+        self.boxSetup[setupName]["boxes"][boxName]["scrollChar"] = "█"
+
+
+    def set_box_scroll_visable(self, setupName, boxName, value):
+        """  """
+        self.__check_text_box_valid(setupName, boxName)
+
+        self.boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = value
 
 
     def set_box_frame_char(self, setupName, boxName):
@@ -922,18 +962,19 @@ class TerminalTextBoxes():
                     continue
 
             elif char == "\x16":                # CTRL + V (paste)
-                try:
-                    copy = self.get_clipboard()
-                    if copy != None and copy != False:
-                        self.promptString = self.promptString[:self.promptCursorPos] + copy + self.promptString[self.promptCursorPos:]
-                        self.promptCursorPos += len(copy)
-                        if (self.promptVCursorPos + len(copy)) >= self.promptLineWidth:
-                            self.promptVCursorPos = self.promptLineWidth
-                        else:
-                            self.promptVCursorPos += len(copy)
+                copy = self.get_clipboard()
+                if copy != None and copy != False:
+                    self.promptString = self.promptString[:self.promptCursorPos] + copy + self.promptString[self.promptCursorPos:]
+                    self.promptCursorPos += len(copy)
+                    if (self.promptVCursorPos + len(copy)) >= self.promptLineWidth:
+                        self.promptVCursorPos = self.promptLineWidth
+                    else:
+                        self.promptVCursorPos += len(copy)
 
-                except Exception as e:
-                    pass
+                if self.resizeDone:
+                    self.update_prompt()
+                    self.update_visual_cursor()
+                    continue
 
             elif char == "\n": # <ENTER>
                 if self.promptString != "":
