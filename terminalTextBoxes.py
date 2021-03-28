@@ -15,6 +15,56 @@ if sys.platform == "win32":
     import win32clipboard
 
 
+# Char color
+CHAR_COLOR = {
+    "black"                 : 1,
+    "blue"                  : 2,
+    "green"                 : 3,
+    "cyan"                  : 4,
+    "red"                   : 5,
+    "magenta"               : 6,
+    "yellow"                : 7,
+    "white"                 : 8
+}
+
+# Char attributes
+CHAR_ATTR = {
+    "altCharset"            : curses.A_ALTCHARSET,
+    "blink"                 : curses.A_BLINK,
+    "bold"                  : curses.A_BOLD,
+    "dim"                   : curses.A_DIM,
+    "invis"                 : curses.A_INVIS,
+    "italic"                : curses.A_ITALIC,
+    "normal"                : curses.A_NORMAL,
+    "protect"               : curses.A_PROTECT,
+    "reverse"               : curses.A_REVERSE,
+    "standout"              : curses.A_STANDOUT,
+    "underline"             : curses.A_UNDERLINE,
+    "horizontal"            : curses.A_HORIZONTAL,
+    "left"                  : curses.A_LEFT,
+    "low"                   : curses.A_LOW,
+    "right"                 : curses.A_RIGHT,
+    "top"                   : curses.A_TOP,
+    "vertical"              : curses.A_VERTICAL,
+    "chartext"              : curses.A_CHARTEXT
+}
+
+# Frame variables
+FRAME_STYLE = {
+    "singleLine"            : ["│", "┤", "├", "─", "┴", "┬", "┘", "┐", "└", "┌", "┼"],
+    "doubleLine"            : ["║", "╣", "╠", "═", "╩", "╦", "╝", "╗", "╚", "╔", "╬"],
+    "hash"                  : ["#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#"],
+    "at"                    : ["@", "@", "@", "@", "@", "@", "@", "@", "@", "@", "@"],
+    "star"                  : ["*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"],
+    "blockFull"             : ["█", "█", "█", "█", "█", "█", "█", "█", "█", "█", "█"],
+    "blockVague0"           : ["▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓"],
+    "blockVague1"           : ["▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒"],
+    "blockVague2"           : ["░", "░", "░", "░", "░", "░", "░", "░", "░", "░", "░"],
+    "invisible"             : [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "]
+}
+
+
+
 class TerminalTextBoxes():
     """  """
     def __init__(self, callback):
@@ -30,53 +80,6 @@ class TerminalTextBoxes():
         self.platform_windows = ["Windows", "win32", "cygwin"]
         self.platform_mac = ["Mac", "darwin", "os2", "os2emx"]
 
-        # Text color/ attribute variables
-        self.TEXT_COLOR = {
-            "black"                 : 1,
-            "blue"                  : 2,
-            "green"                 : 3,
-            "cyan"                  : 4,
-            "red"                   : 5,
-            "magenta"               : 6,
-            "yellow"                : 7,
-            "white"                 : 8
-        }
-
-        # Text attributes
-        self.TEXT_ATTR = {
-            "altCharset"            : curses.A_ALTCHARSET,
-            "blink"                 : curses.A_BLINK,
-            "bold"                  : curses.A_BOLD,
-            "dim"                   : curses.A_DIM,
-            "invis"                 : curses.A_INVIS,
-            "italic"                : curses.A_ITALIC,
-            "normal"                : curses.A_NORMAL,
-            "protect"               : curses.A_PROTECT,
-            "reverse"               : curses.A_REVERSE,
-            "standout"              : curses.A_STANDOUT,
-            "underline"             : curses.A_UNDERLINE,
-            "horizontal"            : curses.A_HORIZONTAL,
-            "left"                  : curses.A_LEFT,
-            "low"                   : curses.A_LOW,
-            "right"                 : curses.A_RIGHT,
-            "top"                   : curses.A_TOP,
-            "vertical"              : curses.A_VERTICAL,
-            "chartext"              : curses.A_CHARTEXT
-        }
-
-        # Frame variables
-        self.FRAME_STYLE = {
-            "singleLine"            : ["│", "┤", "├", "─", "┴", "┬", "┘", "┐", "└", "┌", "┼"],
-            "doubleLine"            : ["║", "╣", "╠", "═", "╩", "╦", "╝", "╗", "╚", "╔", "╬"],
-            "hash"                  : ["#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#"],
-            "at"                    : ["@", "@", "@", "@", "@", "@", "@", "@", "@", "@", "@"],
-            "star"                  : ["*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"],
-            "blockFull"             : ["█", "█", "█", "█", "█", "█", "█", "█", "█", "█", "█"],
-            "blockVague0"           : ["▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓", "▓"],
-            "blockVague1"           : ["▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒", "▒"],
-            "blockVague2"           : ["░", "░", "░", "░", "░", "░", "░", "░", "░", "░", "░"],
-            "invisible"             : [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "]
-        }
         self.FRAME_SIZE = 1
 
         # Resize variables
@@ -563,7 +566,7 @@ class TerminalTextBoxes():
             style = self.get_box_frame_char_dict(self.activeBoxSetup, name)
 
             if name == self.boxSetup[self.activeBoxSetup]["focusedBox"] and self.debug:
-                self.screen.addstr(boxTLY + 1, boxBRX - 1, "*", curses.color_pair(self.TEXT_COLOR["red"]))
+                self.screen.addstr(boxTLY + 1, boxBRX - 1, "*", curses.color_pair(CHAR_COLOR["red"]))
 
             for row in range(self.hTerminal):
                 for column in range(self.wTerminal):
@@ -726,8 +729,8 @@ class TerminalTextBoxes():
 
         if not isinstance(char, str):
             raise Exception("char is not of string type.")
-        if char not in self.FRAME_STYLE:
-            raise Exception(f"{char} not in self.FRAME_STYLE.")
+        if char not in FRAME_STYLE:
+            raise Exception(f"{char} not in FRAME_STYLE.")
 
         self.boxSetup[setupName]["boxes"][boxName]["frameChar"] = char
 
@@ -739,17 +742,17 @@ class TerminalTextBoxes():
         style = self.boxSetup[setupName]["boxes"][boxName]["frameChar"]
 
         frame = {
-            "vertical"              : self.FRAME_STYLE[style][0],
-            "verticalLeft"          : self.FRAME_STYLE[style][1],
-            "verticalRight"         : self.FRAME_STYLE[style][2],
-            "horizontal"            : self.FRAME_STYLE[style][3],
-            "horizontalUp"          : self.FRAME_STYLE[style][4],
-            "horizontalDown"        : self.FRAME_STYLE[style][5],
-            "leftUp"                : self.FRAME_STYLE[style][6],
-            "leftDown"              : self.FRAME_STYLE[style][7],
-            "rightUp"               : self.FRAME_STYLE[style][8],
-            "rightDown"             : self.FRAME_STYLE[style][9],
-            "cross"                 : self.FRAME_STYLE[style][10]
+            "vertical"              : FRAME_STYLE[style][0],
+            "verticalLeft"          : FRAME_STYLE[style][1],
+            "verticalRight"         : FRAME_STYLE[style][2],
+            "horizontal"            : FRAME_STYLE[style][3],
+            "horizontalUp"          : FRAME_STYLE[style][4],
+            "horizontalDown"        : FRAME_STYLE[style][5],
+            "leftUp"                : FRAME_STYLE[style][6],
+            "leftDown"              : FRAME_STYLE[style][7],
+            "rightUp"               : FRAME_STYLE[style][8],
+            "rightDown"             : FRAME_STYLE[style][9],
+            "cross"                 : FRAME_STYLE[style][10]
         }
 
         return frame
@@ -950,7 +953,7 @@ class TerminalTextBoxes():
         curses.start_color()
         curses.use_default_colors()
 
-        for color, value in self.TEXT_COLOR.items():
+        for color, value in CHAR_COLOR.items():
             curses.init_pair(value, value - 1, -1)
 
 
@@ -1047,10 +1050,10 @@ class TerminalTextBoxes():
 
         merged = 0
         for item in attributes:
-            if item in self.TEXT_COLOR:
-                merged = merged | curses.color_pair(self.TEXT_COLOR[item])
-            elif item in self.TEXT_ATTR:
-                merged = merged | self.TEXT_ATTR[item]
+            if item in CHAR_COLOR:
+                merged = merged | curses.color_pair(CHAR_COLOR[item])
+            elif item in CHAR_ATTR:
+                merged = merged | CHAR_ATTR[item]
             else:
                 raise Exception(f"Attribute {item} is not available.")
 
