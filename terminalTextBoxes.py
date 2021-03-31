@@ -22,14 +22,14 @@ PLATFORM_MAC = ["Mac", "darwin", "os2", "os2emx"]
 
 # Char color
 CHAR_COLOR = {
-    "black"                 : 1,
-    "blue"                  : 2,
-    "green"                 : 3,
-    "cyan"                  : 4,
-    "red"                   : 5,
-    "magenta"               : 6,
-    "yellow"                : 7,
-    "white"                 : 8
+    "black"                 : 1 if PLATFORM in PLATFORM_LINUX else 1,
+    "blue"                  : 5 if PLATFORM in PLATFORM_LINUX else 2,
+    "green"                 : 3 if PLATFORM in PLATFORM_LINUX else 3,
+    "cyan"                  : 7 if PLATFORM in PLATFORM_LINUX else 4,
+    "red"                   : 2 if PLATFORM in PLATFORM_LINUX else 5,
+    "magenta"               : 6 if PLATFORM in PLATFORM_LINUX else 6,
+    "yellow"                : 4 if PLATFORM in PLATFORM_LINUX else 7,
+    "white"                 : 8 if PLATFORM in PLATFORM_LINUX else 8,
 }
 
 # Char attributes
@@ -1121,7 +1121,7 @@ class TestTextBox():
             self.tb.set_info_prompt_message(message, 5000)
         else:
             self.tb.infoPromptTextAttr = ["white"]
-            self.tb.add_text_item("setup", "text", message, attributes=["yellow", "bold"])
+            self.tb.add_text_item("setup", "text", message, attributes=["white", "bold"])
 
 
 if __name__ == "__main__":
