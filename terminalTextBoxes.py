@@ -1334,6 +1334,9 @@ class TerminalTextBoxes():
         """
         self.__check_attributes_valid(attributes)
 
+        if isinstance(attributes, str):
+            attributes = [attributes]
+
         merged = 0
         for item in attributes:
             if item in CHAR_COLOR:
@@ -1383,11 +1386,11 @@ class TerminalTextBoxes():
         if attributes == None:
             return None
 
-        if isinstance(attributes, list) or isinstance(attributes, str):
-            if isinstance(attributes, str):
-                attributes = [attributes]
-        else:
+        if not (isinstance(attributes, list) or isinstance(attributes, str)):
             raise Exception("Attributes needs to be either string or list.")
+
+        if isinstance(attributes, str):
+            attributes = [attributes]
 
         for item in attributes:
             if not (item in CHAR_COLOR or item in CHAR_ATTR):
