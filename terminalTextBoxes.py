@@ -104,6 +104,8 @@ class TerminalTextBoxes():
         """ Init. """
         self.__fakeKeyboard = Controller()
 
+        self.__isActive = False
+
         # Prompt callback function
         self.__promptCallbackFunction = callback
 
@@ -164,6 +166,8 @@ class TerminalTextBoxes():
         if len(self.__boxSetup[self.__activeBoxSetup]["boxes"]) == 0:
             raise Exception("There are no boxes in the active box setup.")
 
+        self.__isActive = True
+
         self.__screen = curses.initscr()
         self.__screen.keypad(True)
         curses.noecho()
@@ -181,24 +185,31 @@ class TerminalTextBoxes():
 
     def stop(self):
         """ Stop displaying the terminal text boxes module. """
+        self.__isActive = False
+
         self.__fakeKeyboard.press(Key.esc)
 
 
     def create_text_box_setup(self, setupName):
-        """ Creates a new 'text box setup' in which you can add text boxes to. """
+        """ Creates a new 'text box setup' in which you can add text boxes to.
+            Arguments:
+                setupName           - The name of the box setup.        (str)
+        """
         self.__check_box_setup_valid(setupName, False)
 
-        self.__boxSetup[setupName] = {}
-
-        self.__boxSetup[setupName]["boxes"] = dict()
-        self.__boxSetup[setupName]["boxOrder"] = list()
-        self.__boxSetup[setupName]["focusedBox"] = None
+        self.__boxSetup[setupName]                  = dict()
+        self.__boxSetup[setupName]["boxes"]         = dict()
+        self.__boxSetup[setupName]["boxOrder"]      = list()
+        self.__boxSetup[setupName]["focusedBox"]    = None
 
         self.__activeBoxSetup = setupName
 
 
     def remove_text_box_setup(self, setupName):
-        """ Removes a 'text box setup'. """
+        """ Removes a 'text box setup'.
+            Arguments:
+                setupName           - The name of the box setup.        (str)
+        """
         self.__check_box_setup_valid(setupName)
 
         self.__boxSetup.pop(setupName)
@@ -210,55 +221,27 @@ class TerminalTextBoxes():
             self.__activeBoxSetup = next(iter(self.__boxSetup))
 
 
-    def create_text_box(self, setupName, boxName, width = None, height = None, hPos = None, vPos = 0, hOrient = 0,
-                        vOrient = 0, visable = True, wTextIndent = 0, hTextIndent = 0, frameChar="singleLine",
-                        frameAttr="white", scrollVisable=True):
+    def create_text_box(self, setupName, boxName, width=None, height=None, hPos=None, vPos=0, hOrient=0, vOrient=0,
+                        visable=True, wTextIndent=0, hTextIndent=0, frameChar="singleLine", frameAttr="white",
+                        scrollVisable=True):
         """ Creates a text box inside the given text box setup.
-
-            Input parameters:
-                setupName           - Name of the box setup that the box belongs to.
-                boxName             - Name of the textbox.
-                width               - None if not fixed width (becomes textWidth).          Default: None
-                height              - None if not fixed height (becomes textHeight).        Default: None
-                hPos                - Position between already existing boxes horizontally. Default: None
-                vPos                - Position between already existing boxes vertically.   Default: 0      Not impl
-                hOrient             - Horizontal orientation of the box.                    Default: 0 (Left)
-                vOrient             - Vertical orientation of the box.                      Default: 0 (Up)
-                visable             - If True the box is visable else it's not.             Default: True
-                wTextIndent         - Width indentation for text.                           Default: 0
-                hTextIndent         - Height indentation for text.                          Default: 0
-                frameChar           - Character for the frame.                              Default: singleLine
-                frameAttr           - The attributes of the frame.                          Default: white
-
-            Box properties:
-                name                - Name of the textbox
-                fixedWidth          - None if not fixed width (becomes boxWidth).
-                fixedHeight         - None if not fixed height (becomes boxHeight).
-                hOrient             - Horizontal orientation of the box.                    Default: 0 (Up)
-                vOrient             - Vertical orientation of the box.                      Default: 0 (Left)
-                visable             - If True the box is visable else it's not.             Default: True
-                wTextIndent         - Width indentation for text.                           Default: 0
-                hTextIndent         - Height indentation for text.                          Default: 0
-                boxWidth            - The width of the box (frame included).
-                boxHeight           - The height of the box (frame included).
-                prevBoxWidth        - The previous box width.
-                prevBoxHeight       - The previous box height.
-                prevTextItemsLength - The previous length of the textItems variable.
-                textWidth           - The width of the text inside the box.
-                textHeight          - The height of the text inside the box.
-                topLeft             - Top left coordinate of the box.
-                bottomRight         - Bottom right coordinate of the box.
-                textStartX          - x-coordinate of where the text start in the box.
-                textStartY          - y-coordinate of where the text start in the box.
-
-            Box Text variables:
-                textItems           - List of all the text items (One list item is one continuous message along
-                                      with text color and other attributes).
-                lines               - List of formatted textItems that is splitted to fit the text box width.
-                scrollIndex         - Scroll index that keeps track of how much text in box have been scrolled.
+            Arguments:
+                setupName           - The name of the box setup.                                    (str)
+                boxName             - The name of the text box.                                     (str)
+                width               - Width of the text box (None if width is not fixed size).      (int)
+                height              - Height of the text box (None if height is not fixed size).    (int)
+                hPos                - Where this box should be placed horizontally.                 (int)
+                vPos                - Where this box should be placed vertically.                   (int)
+                hOrient             - Horizontal orientation of the box (0 : Left, 1 : Right).      (int)
+                vOrient             - Vertical orientation of the box (0 : Up, 1 : Down).           (int)
+                visable             - Should the box be visable or not? (Padding box?).             (bool)
+                wTextIndent         - Width indentation of the text in the box.                     (int)
+                hTextIndent         - Height indentation of the text in the box.                    (int)
+                frameChar           - What frame style should be used (check FRAME_STYLE dict).     (str)
+                frameAttr           - What frame attributes should be used (color, text format).    (str/list)
+                scrollVisable       - Should the scrollbar be visable or not.                       (bool)
         """
         self.__check_text_box_valid(setupName, boxName, False)
-
         self.__init_box_default_parameters(setupName, boxName)
 
         if width != None:
@@ -312,18 +295,20 @@ class TerminalTextBoxes():
         self.__boxSetup[setupName]["boxes"][boxName]["visable"] = visable
 
         self.__is_type(wTextIndent, int)
-        self.__boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = wTextIndent
         self.__is_type(hTextIndent, int)
+        self.__boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = wTextIndent
         self.__boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = hTextIndent
-
         self.__boxSetup[setupName]["boxes"][boxName]["frameChar"] = frameChar
         self.__boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = frameAttr
-
         self.__boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = scrollVisable
 
 
     def remove_text_box(self, setupName, boxName):
-        """ Removes a text box inside the given text box setup. """
+        """ Removes a text box inside the given text box setup.
+            Arguments:
+                setupName           - The name of the box setup.    (str)
+                boxName             - The name of the text box.     (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         self.__boxSetup[setupName]["boxes"].pop(boxName)
@@ -335,23 +320,26 @@ class TerminalTextBoxes():
             self.__boxSetup[setupName]["focusedBox"]= next(iter(self.__boxSetup[setupName]["boxes"]))# }}}
 
 
-    def set_info_prompt_message(self, message, timeout=None):
-        """ Sets info message above the prompt. Timeout = ms """
-        self.__is_type(message, str)
-
+    def set_info_prompt_message(self, text, timeout=None):
+        """ Sets info message above the prompt.
+            Arguments:
+                text                - The text to be set in the info prompt.            (str)
+                timeout             - Timeout before message disappears (ms).           (int)
+        """
+        self.__is_type(text, str)
         self.__reset_info_prompt()
 
         infoPromptY = self.__hTerminal - 1 - self.__promptHeight
         textStartX = self.__infoPromptTextIndent + 1
         textMaxLen = self.__wTerminal - (self.__infoPromptTextIndent * 2) - 2
-        textEndX = textStartX + len(message[:textMaxLen])
+        textEndX = textStartX + len(text[:textMaxLen])
 
-        self.__infoPromptCurrMessage = message
+        self.__infoPromptCurrMessage = text
         bgAttr = self.__merge_attributes(self.__infoPromptCharAttr)
         textAttr = self.__merge_attributes(self.__infoPromptTextAttr)
 
         self.__screen.addstr(infoPromptY, self.__infoPromptTextIndent," ", bgAttr)
-        self.__screen.addstr(infoPromptY, textStartX, message[:textMaxLen], textAttr)
+        self.__screen.addstr(infoPromptY, textStartX, text[:textMaxLen], textAttr)
         self.__screen.addstr(infoPromptY, textEndX," ", bgAttr)
 
         if timeout != None:
@@ -362,8 +350,15 @@ class TerminalTextBoxes():
         self.__screen.refresh()
 
 
-    def add_text_item(self, setupName, boxName, message, attributes="white", lineType="wrap"):
-        """ Adds a text item to the textItems list of the given text box. """
+    def add_text_item(self, setupName, boxName, text, attributes="white", lineType="wrap"):
+        """ Adds a text item to the textItems list of the given text box.
+            Arguments:
+                setupName           - The name of the box setup.        (str)
+                boxName             - The name of the text box.         (str)
+                text                - The text to be added.             (str)
+                attributes          - The text attributes.              (str/list)
+                lineType            - The line type (wrap/single).      (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         if self.__boxSetup[setupName]["boxes"][boxName]["visable"] == False:
@@ -377,11 +372,16 @@ class TerminalTextBoxes():
         self.__boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = \
                 len(self.__boxSetup[setupName]["boxes"][boxName]["textItems"])
 
-        self.__boxSetup[setupName]["boxes"][boxName]["textItems"].append([message, attributes, LINE_TYPE[lineType]])
+        self.__boxSetup[setupName]["boxes"][boxName]["textItems"].append([text, attributes, LINE_TYPE[lineType]])
 
 
     def remove_text_item(self, setupName, boxName, index):
-        """ Removes a text item from the textItems list of the given text box. """
+        """ Removes a text item from the textItems list of the given text box.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+                index               - The index of the item to be removed.  (int)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         length = len(self.__boxSetup[setupName]["boxes"][boxName]["textItems"])
@@ -393,7 +393,11 @@ class TerminalTextBoxes():
 
 
     def clear_text_items(self, setupName, boxName):
-        """ Clears the entire textItems list from a given text box. """
+        """ Clears the entire textItems list from a given text box.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         self.__boxSetup[setupName]["boxes"][boxName]["textItems"] = list()
@@ -447,7 +451,10 @@ class TerminalTextBoxes():
 
 
     def __update_prompt_variables(self, updateTerminal=True):
-        """ Updates prompt variables. """
+        """ Updates prompt variables.
+            Arguments:
+                updateTerminal          - Should terminal width/height be updated.      (bool)
+        """
         if updateTerminal:
             self.__hTerminal, self.__wTerminal = self.__screen.getmaxyx() # Get the terminal size
 
@@ -464,7 +471,10 @@ class TerminalTextBoxes():
 
 
     def __update_box_variables(self, updateTerminal=True):
-        """ Updates box variables. """
+        """ Updates box variables.
+            Arguments:
+                updateTerminal          - Should terminal width/height be updated.      (bool)
+        """
         if updateTerminal:
             self.__hTerminal, self.__wTerminal = self.__screen.getmaxyx() # Get the terminal size
 
@@ -748,7 +758,10 @@ class TerminalTextBoxes():
 
 
     def set_prompt_sign(self, sign):
-        """ Set the prompt sign. """
+        """ Set the prompt sign.
+            Arguments:
+                sign        - The sign variable for the prompt.     (str)
+        """
         self.__is_type(sign, str)
 
         self.__promptSign = sign
@@ -762,7 +775,10 @@ class TerminalTextBoxes():
 
 
     def set_prompt_string(self, string):
-        """ Set the prompt string. """
+        """ Set the prompt string.
+            Arguments:
+                string          - The string displayed in the prompt.   (str)
+        """
         self.__is_type(string, str)
 
         self.__promptString = string
@@ -780,7 +796,10 @@ class TerminalTextBoxes():
 
 
     def set_info_prompt_char(self, char):
-        """ Set the info prompt character. """
+        """ Set the info prompt character.
+            Arguments:
+                char        - The character for the info prompt line.       (str)
+        """
         self.__is_type(char, str)
         if len(char) != 1:
             raise Exception("Char can only be of length 1.")
@@ -794,7 +813,10 @@ class TerminalTextBoxes():
 
 
     def set_info_prompt_char_attr(self, attributes):
-        """ Set the info prompt character attributes. """
+        """ Set the info prompt character attributes.
+            Arguments:
+                attributes      - The info prompt line attributes.      (str/list)
+        """
         self.__check_attributes_valid(attributes)
 
         self.__infoPromptCharAttr = attributes
@@ -806,7 +828,10 @@ class TerminalTextBoxes():
 
 
     def set_info_prompt_text_attr(self, attributes):
-        """ Set the info prompt text attributes. """
+        """ Set the info prompt text attributes.
+            Arguments:
+                attributes      - The info prompt text attributes.      (str/list)
+        """
         self.__check_attributes_valid(attributes)
 
         self.__infoPromptTextAttr = attributes
@@ -818,7 +843,10 @@ class TerminalTextBoxes():
 
 
     def set_info_prompt_text_indent(self, indent):
-        """ Set the info prompt text indentation """
+        """ Set the info prompt text indentation.
+            Arguments:
+                indent          - The indentation of the info prompt text.      (int)
+        """
         self.__is_type(char, int)
         if indent < 0:
             raise Exception("indent can't be lower than 0.")
@@ -828,14 +856,23 @@ class TerminalTextBoxes():
 
 
     def get_box_width(self, setupName, boxName):
-        """ Get the fixed width of a given box. """
+        """ Get the fixed width of a given box.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         return self.__boxSetup[setupName]["boxes"][boxName]["fixedWidth"]
 
 
     def set_box_width(self, setupName, boxName, width):
-        """ Set the fixed width of a given box. """
+        """ Set the fixed width of a given box.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+                width               - Width of the text box.                (int)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         self.__is_type(width, int)
@@ -844,14 +881,23 @@ class TerminalTextBoxes():
 
 
     def get_box_height(self, setupName, boxName):
-        """ Get the fixed height of a given box. """
+        """ Get the fixed height of a given box.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         return self.__boxSetup[setupName]["boxes"][boxName]["fixedHeight"]
 
 
     def set_box_height(self, setupName, boxName, height):
-        """ Set the fixed height of a given box. """
+        """ Set the fixed height of a given box.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+                height              - The height of the text box.           (int)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         self.__is_type(height, int)
@@ -860,14 +906,23 @@ class TerminalTextBoxes():
 
 
     def get_box_horizontal_orient(self, setupName, boxName):
-        """ Get a given box horizontal orientation. """
+        """ Get a given box horizontal orientation.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         return self.__boxSetup[setupName]["boxes"][boxName]["hOrient"]
 
 
     def set_box_horizontal_orient(self, setupName, boxName,  orient):
-        """ Set a given box horizontal orientation. """
+        """ Set a given box horizontal orientation.
+            Arguments:
+                setupName           - The name of the box setup.                                    (str)
+                boxName             - The name of the text box.                                     (str)
+                orient              - Horizontal orientation of the box (0 : Left, 1 : Right).      (int)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         if not isinstance(orient, int) or orient not in H_ORIENT.values():
@@ -877,14 +932,23 @@ class TerminalTextBoxes():
 
 
     def get_box_vertical_orient(self, setupName, boxName):
-        """ Get a given box vertical orientation. """
+        """ Get a given box vertical orientation.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         return self.__boxSetup[setupName]["boxes"][boxName]["vOrient"]
 
 
     def set_box_vertical_orient(self, setupName, boxName, orient):
-        """ Set a given box vertical orientation. """
+        """ Set a given box vertical orientation.
+            Arguments:
+                setupName           - The name of the box setup.                                    (str)
+                boxName             - The name of the text box.                                     (str)
+                orient              - Vertical orientation of the box (0 : Up, 1 : Down).           (int)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         if not isinstance(orient, int) or orient not in V_ORIENT.values():
@@ -894,14 +958,23 @@ class TerminalTextBoxes():
 
 
     def get_box_text_width_indent(self, setupName, boxName):
-        """ Get a given box text width indentation. """
+        """ Get a given box text width indentation.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         return self.__boxSetup[setupName]["boxes"][boxName]["wTextIndent"]
 
 
     def set_box_text_width_indent(self, setupName, boxName, indent):
-        """ Set a given box text width indentation. """
+        """ Set a given box text width indentation.
+            Arguments:
+                setupName           - The name of the box setup.                    (str)
+                boxName             - The name of the text box.                     (str)
+                indent              - Width indentation of the text in the box.     (int)
+        """
         self.__check_text_box_valid(setupName, boxName)
         self.__is_type(indent, int)
 
@@ -909,14 +982,23 @@ class TerminalTextBoxes():
 
 
     def get_box_text_height_indent(self, setupName, boxName):
-        """ Get a given text height indentation. """
+        """ Get a given text height indentation.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         return self.__boxSetup[setupName]["boxes"][boxName]["hTextIndent"]
 
 
     def set_box_text_height_indent(self, setupName, boxName, indent):
-        """ Set a given box height indentation. """
+        """ Set a given box height indentation.
+            Arguments:
+                setupName           - The name of the box setup.                    (str)
+                boxName             - The name of the text box.                     (str)
+                indent              - Height indentation of the text in the box.    (int)
+        """
         self.__check_text_box_valid(setupName, boxName)
         self.__is_type(indent, int)
 
@@ -924,14 +1006,22 @@ class TerminalTextBoxes():
 
 
     def get_box_frame_char(self, setupName, boxName):
-        """ Get a given box frame character. """
+        """ Get a given box frame character.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         return self.__boxSetup[setupName]["boxes"][boxName]["frameChar"]
 
 
     def get_box_frame_char_dict(self, setupName, boxName):
-        """ Get a given box frame character dictionary. """
+        """ Get a given box frame character dictionary.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         style = self.__boxSetup[setupName]["boxes"][boxName]["frameChar"]
@@ -954,7 +1044,12 @@ class TerminalTextBoxes():
 
 
     def set_box_frame_char(self, setupName, boxName, char):
-        """ Set a given box frame character. """
+        """ Set a given box frame character.
+            Arguments:
+                setupName           - The name of the box setup.                                    (str)
+                boxName             - The name of the text box.                                     (str)
+                char                - What frame style should be used (check FRAME_STYLE dict).     (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
         self.__is_type(char, str)
 
@@ -965,14 +1060,23 @@ class TerminalTextBoxes():
 
 
     def get_box_frame_attr(self, setupName, boxName):
-        """ Get a given box frame attribute. """
+        """ Get a given box frame attributes.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         return self.__boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"]
 
 
     def set_box_frame_attr(self, setupName, boxName, attributes):
-        """ Set a given box frame attribute. """
+        """ Set a given box frame attribute.
+            Arguments:
+                setupName           - The name of the box setup.                                    (str)
+                boxName             - The name of the text box.                                     (str)
+                attributes          - What frame attributes should be used (color, text format).    (str/list)
+        """
         self.__check_text_box_valid(setupName, boxName)
         self.__check_attributes_valid(attributes)
 
@@ -982,14 +1086,23 @@ class TerminalTextBoxes():
 
 
     def get_box_visable(self, setupName, boxName):
-        """ Get a given box visable. """
+        """ Get a given box visable.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         return self.__boxSetup[setupName]["boxes"][boxName]["visable"]
 
 
     def set_box_visable(self, setupName, boxName, visable):
-        """ Set a given box visable. """
+        """ Set a given box visable.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+                visable             - Should the box be visable or not.     (bool)
+        """
         self.__check_text_box_valid(setupName, boxName)
         self.__is_type(visable, bool)
 
@@ -997,14 +1110,23 @@ class TerminalTextBoxes():
 
 
     def get_box_horizontal_pos(self, setupName, boxName):
-        """ Get a given box horizontal position. """
+        """ Get a given box horizontal position.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         return self.__boxSetup[setupName]["boxOrder"].index(boxName)
 
 
     def set_box_horizontal_pos(self, setupName, boxName, pos):
-        """ Set a given box horizontal position. """
+        """ Set a given box horizontal position.
+            Arguments:
+                setupName           - The name of the box setup.                        (str)
+                boxName             - The name of the text box.                         (str)
+                pos                 - Where this box should be placed horizontally.     (int)
+        """
         self.__check_text_box_valid(setupName, boxName)
         self.__is_type(pos, int)
 
@@ -1015,28 +1137,45 @@ class TerminalTextBoxes():
 
 
     def get_box_vertical_pos(self, setupName, boxName):
-        """ Get a given box vertical position. """
+        """ Get a given box vertical position.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         # TBD
 
 
     def get_box_vertical_pos(self, setupName, boxName, pos):
-        """ Set a given box vertical position. """
+        """ Set a given box vertical position.
+            Arguments:
+                setupName           - The name of the box setup.                    (str)
+                boxName             - The name of the text box.                     (str)
+                pos                 - Where this box should be placed vertically.   (int)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         # TBD
 
 
     def set_active_box_setup(self, setupName):
-        """ Set the active box setup. """
+        """ Set the active box setup.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_box_setup_valid(setupName)
 
         self.__activeBoxSetup = setupName
 
 
     def set_focus_box(self, setupName, boxName):
-        """ Set a box in focus i.e. make it scrollable. """
+        """ Set a box in focus i.e. make it scrollable.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         if self.__boxSetup[setupName]["boxes"][boxName]["visable"] == False:
@@ -1046,17 +1185,26 @@ class TerminalTextBoxes():
 
 
     def get_box_scroll_visable(self, setupName, boxName):
-        """ Get a given box scroll visable. """
+        """ Get a given box scroll visable.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
         return self.__boxSetup[setupName]["boxes"][boxName]["scrollVisable"]
 
 
-    def set_box_scroll_visable(self, setupName, boxName, value):
-        """ Set a given box scroll visable. """
+    def set_box_scroll_visable(self, setupName, boxName, visable):
+        """ Set a given box scroll visable.
+            Arguments:
+                setupName           - The name of the box setup.                (str)
+                boxName             - The name of the text box.                 (str)
+                visable             - Should the scrollbar be visable or not.   (bool)
+        """
         self.__check_text_box_valid(setupName, boxName)
 
-        self.__boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = value
+        self.__boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = visable
 
 
     ###################################################################################################################
@@ -1064,7 +1212,10 @@ class TerminalTextBoxes():
     ###################################################################################################################
 
     def __key_handler(self, event):
-        """ Handler of key presses. """# {{{
+        """ Handler of key presses.
+            Arguments:
+                event           - Event argument (Not used).
+        """
         while True:
             char = self.__screen.get_wch()
 
@@ -1252,38 +1403,42 @@ class TerminalTextBoxes():
 
 
     def __init_box_default_parameters(self, setupName, boxName):
-        """ Initialize a given box with default parameters. """
-        self.__boxSetup[setupName]["boxes"][boxName] = dict()
-        self.__boxSetup[setupName]["focusedBox"] = boxName
+        """ Initialize a given box with default parameters.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+        """
+        self.__boxSetup[setupName]["boxes"][boxName]                        = dict()
+        self.__boxSetup[setupName]["focusedBox"]                            = boxName
 
-        self.__boxSetup[setupName]["boxes"][boxName]["fixedWidth"] = None
-        self.__boxSetup[setupName]["boxes"][boxName]["fixedHeight"] = None
-        self.__boxSetup[setupName]["boxes"][boxName]["hOrient"] = H_ORIENT["Left"]
-        self.__boxSetup[setupName]["boxes"][boxName]["vOrient"] = V_ORIENT["Up"]
-        self.__boxSetup[setupName]["boxes"][boxName]["visable"] = True
-        self.__boxSetup[setupName]["boxes"][boxName]["wTextIndent"] = 0
-        self.__boxSetup[setupName]["boxes"][boxName]["hTextIndent"] = 0
-        self.__boxSetup[setupName]["boxes"][boxName]["boxWidth"] = None
-        self.__boxSetup[setupName]["boxes"][boxName]["boxHeight"] = None
-        self.__boxSetup[setupName]["boxes"][boxName]["prevBoxWidth"] = None
-        self.__boxSetup[setupName]["boxes"][boxName]["prevBoxHeight"] = None
-        self.__boxSetup[setupName]["boxes"][boxName]["textWidth"] = None
-        self.__boxSetup[setupName]["boxes"][boxName]["textHeight"] = None
-        self.__boxSetup[setupName]["boxes"][boxName]["topLeft"] = None
-        self.__boxSetup[setupName]["boxes"][boxName]["bottomRight"] = None
-        self.__boxSetup[setupName]["boxes"][boxName]["textStartX"] = 0
-        self.__boxSetup[setupName]["boxes"][boxName]["textStartY"] = 0
-        self.__boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"] = "white"
-        self.__boxSetup[setupName]["boxes"][boxName]["frameAttr"] = None
-        self.__boxSetup[setupName]["boxes"][boxName]["frameChar"] = "singleLine"
+        self.__boxSetup[setupName]["boxes"][boxName]["fixedWidth"]          = None
+        self.__boxSetup[setupName]["boxes"][boxName]["fixedHeight"]         = None
+        self.__boxSetup[setupName]["boxes"][boxName]["hOrient"]             = H_ORIENT["Left"]
+        self.__boxSetup[setupName]["boxes"][boxName]["vOrient"]             = V_ORIENT["Up"]
+        self.__boxSetup[setupName]["boxes"][boxName]["visable"]             = True
+        self.__boxSetup[setupName]["boxes"][boxName]["wTextIndent"]         = 0
+        self.__boxSetup[setupName]["boxes"][boxName]["hTextIndent"]         = 0
+        self.__boxSetup[setupName]["boxes"][boxName]["boxWidth"]            = None
+        self.__boxSetup[setupName]["boxes"][boxName]["boxHeight"]           = None
+        self.__boxSetup[setupName]["boxes"][boxName]["prevBoxWidth"]        = None
+        self.__boxSetup[setupName]["boxes"][boxName]["prevBoxHeight"]       = None
+        self.__boxSetup[setupName]["boxes"][boxName]["textWidth"]           = None
+        self.__boxSetup[setupName]["boxes"][boxName]["textHeight"]          = None
+        self.__boxSetup[setupName]["boxes"][boxName]["topLeft"]             = None
+        self.__boxSetup[setupName]["boxes"][boxName]["bottomRight"]         = None
+        self.__boxSetup[setupName]["boxes"][boxName]["textStartX"]          = 0
+        self.__boxSetup[setupName]["boxes"][boxName]["textStartY"]          = 0
+        self.__boxSetup[setupName]["boxes"][boxName]["frameAttrUnmerged"]   = "white"
+        self.__boxSetup[setupName]["boxes"][boxName]["frameAttr"]           = None
+        self.__boxSetup[setupName]["boxes"][boxName]["frameChar"]           = "singleLine"
 
-        self.__boxSetup[setupName]["boxes"][boxName]["textItems"] = list()
+        self.__boxSetup[setupName]["boxes"][boxName]["textItems"]           = list()
         self.__boxSetup[setupName]["boxes"][boxName]["prevTextItemsLength"] = 0
-        self.__boxSetup[setupName]["boxes"][boxName]["lines"] = list()
-        self.__boxSetup[setupName]["boxes"][boxName]["scrollIndex"] = 0
+        self.__boxSetup[setupName]["boxes"][boxName]["lines"]               = list()
+        self.__boxSetup[setupName]["boxes"][boxName]["scrollIndex"]         = 0
 
-        self.__boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = True
-        self.__boxSetup[setupName]["boxes"][boxName]["scrollChar"] = "█"
+        self.__boxSetup[setupName]["boxes"][boxName]["scrollVisable"]       = True
+        self.__boxSetup[setupName]["boxes"][boxName]["scrollChar"]          = "█"
 
 
     def __reset_info_prompt(self):
@@ -1332,6 +1487,8 @@ class TerminalTextBoxes():
     def __merge_attributes(self, attributes):
         """ Merges all attribute values to a single attribute and returns it.
             Raises exception if invalid attribute exist.
+            Arguments:
+                attributes          - What frame attributes should be used (color, text format).    (str/list)
         """
         self.__check_attributes_valid(attributes)
 
@@ -1353,7 +1510,12 @@ class TerminalTextBoxes():
     ###################################################################################################################
 
     def __check_box_setup_valid(self, setupName, shouldExist=True):
-        """ Check to see if a given setupBox exist or does not exist. """
+        """ Check to see if a given setupBox exist or does not exist.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+                shouldExist         - Should the setup exist.               (bool)
+        """
         self.__is_type(setupName, str)
 
         if shouldExist:
@@ -1367,7 +1529,12 @@ class TerminalTextBoxes():
 
 
     def __check_text_box_valid(self, setupName, boxName, shouldExist=True):
-        """ Check to see if a given boxName exist or does not exist. """
+        """ Check to see if a given boxName exist or does not exist.
+            Arguments:
+                setupName           - The name of the box setup.            (str)
+                boxName             - The name of the text box.             (str)
+                shouldExist         - Should the text box exist.            (bool)
+        """
         self.__check_box_setup_valid(setupName)
 
         self.__is_type(boxName, str)
@@ -1383,7 +1550,10 @@ class TerminalTextBoxes():
 
 
     def __check_attributes_valid(self, attributes):
-        """ Checks if the given attributes are valid. """
+        """ Checks if the given attributes are valid.
+            Arguments:
+                attributes          - What frame attributes should be used (color, text format).    (str/list)
+        """
         if attributes == None:
             return None
 
@@ -1399,7 +1569,11 @@ class TerminalTextBoxes():
 
 
     def __is_type(self, value, ttype):
-        """ Checks if a given value is of the expected type. """
+        """ Checks if a given value is of the expected type.
+            Arguments:
+                value           - The variable to be checked.       (Any type)
+                ttype           - The type that 'value' should be   (Any type)
+        """
         if not isinstance(value, ttype):
             raise Exception("Value is not of {ttype} type.")
         return True
