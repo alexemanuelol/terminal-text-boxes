@@ -3,7 +3,3 @@ A framework for terminal text box functionality used for chat applications, gene
 
 ## TODOs
 - Fix stackable boxes in height
-
-- functions to add:
-
-set_callback_func

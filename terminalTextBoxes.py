@@ -100,14 +100,15 @@ DBG_BOX_INFO = {
 class TerminalTextBoxes():
     """ Terminal Text Boxes Class. """
 
-    def __init__(self, callback):
+    def __init__(self, charCallback=None, enterCallback=None):
         """ Init. """
         self.__fakeKeyboard = Controller()
 
         self.__isActive = False
 
         # Prompt callback function
-        self.__promptCallbackFunction = callback
+        self.__promptCharCallbackFunction = charCallback
+        self.__promptEnterCallbackFunction = enterCallback
 
         self.__FRAME_SIZE = 1
 
@@ -1207,6 +1208,14 @@ class TerminalTextBoxes():
         self.__boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = visable
 
 
+    def set_prompt_callback_function(self, function):
+        """ Set the prompt callback function every time <ENTER> is pressed.
+            Arguments:
+                function            - The callback function.        (Function)
+        """
+        self.__promptCallbackFunction = function
+
+
     ###################################################################################################################
     # KEY HANDLER FUNCTION                                                                                            #
     ###################################################################################################################
@@ -1220,6 +1229,10 @@ class TerminalTextBoxes():
             char = self.__screen.get_wch()
 
             focusedBox = self.__boxSetup[self.__activeBoxSetup]["focusedBox"]
+
+
+            if self.__promptCharCallbackFunction != None:
+                self.__promptCharCallbackFunction(char)
 
             # GENERAL KEY EVENTS --------------------------------------------------------------------------------------
             if char == "\x1b":                  # <ESC> KEY (Exit)
@@ -1334,12 +1347,11 @@ class TerminalTextBoxes():
                     continue
 
             elif char == "\n": # <ENTER>
-                if self.__promptString != "":
-                    self.__promptCallbackFunction(self.__promptString)
+                if self.__promptString != "" and self.__promptEnterCallbackFunction != None:
+                    self.__promptEnterCallbackFunction(self.__promptString)
                 self.__promptString = ""
                 self.__promptCursorPos = 0
                 self.__promptVCursorPos = 0
-                # TEMP
                 self.__boxSetup[self.__activeBoxSetup]["boxes"][focusedBox]["scrollIndex"] = 0
 
 
