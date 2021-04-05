@@ -86,8 +86,8 @@ V_ORIENT = {
 
 # Debug variables
 DBG_BOX_PLACEMENT = {
-    "Top"                   : 0,
-    "Bottom"                : 1
+    "top"                   : 0,
+    "bottom"                : 1
 }
 DBG_BOX_INFO = {
     "name"                  : 0,
@@ -151,8 +151,8 @@ class TerminalTextBoxes():
         self.__BOX_MIN_HEIGHT           = (self.__FRAME_SIZE * 2) + 1
 
         self.debug                      = True
-        self.dbgBoxPlacementShow        = 0
-        self.dbgBoxInfoShow             = 0
+        self.dbgBoxPlacementShow        = DBG_BOX_PLACEMENT["top"]
+        self.dbgBoxInfoShow             = DBG_BOX_INFO["name"]
 
 
     ###################################################################################################################
@@ -547,7 +547,7 @@ class TerminalTextBoxes():
 
             # Text start/ end positions
             attr["textStartX"] = wIndex + self.__FRAME_SIZE + attr["wTextIndent"]
-            if self.debug and self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Top"]:
+            if self.debug and self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["top"]:
                 attr["textStartY"] = hIndex + 2 + self.__FRAME_SIZE + attr["hTextIndent"]
             else:
                 attr["textStartY"] = hIndex + self.__FRAME_SIZE + attr["hTextIndent"]
@@ -626,24 +626,24 @@ class TerminalTextBoxes():
                 for column in range(self.__wTerminal):
                     # DEBUG BOX ON THE TOP OF EVERY BOX
                     if (boxTLY + 2) == row and boxTLX == column and self.debug and \
-                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Top"]:
+                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["top"]:
                         self.__screen.addstr(row, column, style["verticalRight"], attr["frameAttr"])
                     elif (boxTLY + 2) == row and boxBRX == column and self.debug and \
-                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Top"]:
+                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["top"]:
                         self.__screen.addstr(row, column, style["verticalLeft"], attr["frameAttr"])
                     elif (boxTLY + 2) == row and boxTLX < column and boxBRX > column and self.debug and \
-                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Top"]:
+                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["top"]:
                         self.__screen.addstr(row, column, style["horizontal"], attr["frameAttr"])
 
                     # DEBUG BOX ON THE BOTTOM OF EVERY BOX
                     elif (boxBRY - 2) == row and boxTLX == column and self.debug and \
-                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Bottom"]:
+                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["bottom"]:
                         self.__screen.addstr(row, column, style["verticalRight"], attr["frameAttr"])
                     elif (boxBRY - 2) == row and boxBRX == column and self.debug and \
-                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Bottom"]:
+                            self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["bottom"]:
                         self.__screen.addstr(row, column, style["verticalLeft"], attr["frameAttr"])
                     elif (boxBRY - 2) == row and boxTLX < column and boxBRX > column and self.debug \
-                            and self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Bottom"]:
+                            and self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["bottom"]:
                         self.__screen.addstr(row, column, style["horizontal"], attr["frameAttr"])
 
                     # NORMAL BOX FRAME
@@ -662,7 +662,7 @@ class TerminalTextBoxes():
 
             if self.debug:
                 x = boxTLX + 1
-                y = (boxTLY + 1) if self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["Top"] else (boxBRY - 1)
+                y = (boxTLY + 1) if self.dbgBoxPlacementShow == DBG_BOX_PLACEMENT["top"] else (boxBRY - 1)
                 if self.dbgBoxInfoShow == DBG_BOX_INFO["name"]:
                     self.__screen.addstr(y, x, name[:(attr["boxWidth"] - 1 - self.__FRAME_SIZE)])
                 elif self.dbgBoxInfoShow == DBG_BOX_INFO["textSize"]:
