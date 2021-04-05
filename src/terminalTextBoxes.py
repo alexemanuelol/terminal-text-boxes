@@ -1237,7 +1237,6 @@ class TerminalTextBoxes():
 
             focusedBox = self.__boxSetup[self.__activeBoxSetup]["focusedBox"]
 
-
             if self.__promptCharCallbackFunction != None:
                 self.__promptCharCallbackFunction(char)
 
@@ -1320,7 +1319,7 @@ class TerminalTextBoxes():
                     self.__update_visual_cursor()
                     continue
 
-            elif char == "\x08" or char == 263: # BACKSPACE KEY
+            elif char == "\x08" or char == 263 or char == "\x7f": # BACKSPACE KEY
                 self.__promptString = self.__promptString[:self.__promptCursorPos][:-1] + \
                     self.__promptString[self.__promptCursorPos:]
 
