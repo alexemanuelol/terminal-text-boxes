@@ -38,7 +38,7 @@ CHAR_ATTR = {
     "blink"                 : curses.A_BLINK,
     "bold"                  : curses.A_BOLD,
     "dim"                   : curses.A_DIM,
-    "invis"                 : curses.A_INVIS,
+    "invisible"             : curses.A_INVIS,
     "italic"                : curses.A_ITALIC,
     "normal"                : curses.A_NORMAL,
     "protect"               : curses.A_PROTECT,
@@ -76,12 +76,12 @@ LINE_TYPE = {
 
 # Orientations
 H_ORIENT = {
-    "Left"                  : 0,
-    "Right"                 : 1
+    "left"                  : 0,
+    "right"                 : 1
 }
 V_ORIENT = {
-    "Up"                    : 0,
-    "Down"                  : 1
+    "up"                    : 0,
+    "down"                  : 1
 }
 
 # Debug variables
@@ -137,7 +137,7 @@ class TerminalTextBoxes():
         self.__infoPromptCharAttr       = "white"
         self.__infoPromptTextAttr       = "yellow"
         self.__infoPromptHeight         = 1
-        self.__infoPromptCurrMessage    = ""
+        self.__infoPromptCurrText    = ""
         self.__infoPromptActive         = False
         self.__infoPromptTextIndent     = 3
         self.__infoPromptTimer          = threading.Timer(5, self.__reset_info_prompt)
@@ -222,7 +222,7 @@ class TerminalTextBoxes():
             self.__activeBoxSetup = next(iter(self.__boxSetup))
 
 
-    def create_text_box(self, setupName, boxName, width=None, height=None, hPos=None, vPos=0, hOrient=0, vOrient=0,
+    def create_text_box(self, setupName, boxName, width=None, height=None, hPos=None, vPos=None, hOrient=0, vOrient=0,
                         visable=True, wTextIndent=0, hTextIndent=0, frameChar="singleLine", frameAttr="white",
                         scrollVisable=True):
         """ Creates a text box inside the given text box setup.
@@ -233,8 +233,8 @@ class TerminalTextBoxes():
                 height              - Height of the text box (None if height is not fixed size).    (int)
                 hPos                - Where this box should be placed horizontally.                 (int)
                 vPos                - Where this box should be placed vertically.                   (int)
-                hOrient             - Horizontal orientation of the box (0 : Left, 1 : Right).      (int)
-                vOrient             - Vertical orientation of the box (0 : Up, 1 : Down).           (int)
+                hOrient             - Horizontal orientation of the box (0 : left, 1 : right).      (int)
+                vOrient             - Vertical orientation of the box (0 : up, 1 : down).           (int)
                 visable             - Should the box be visable or not? (Padding box?).             (bool)
                 wTextIndent         - Width indentation of the text in the box.                     (int)
                 hTextIndent         - Height indentation of the text in the box.                    (int)
@@ -282,9 +282,9 @@ class TerminalTextBoxes():
                     self.__boxSetup[setupName]["boxes"][self.__boxSetup[setupName]["boxOrder"][prevBoxIndex]]["hOrient"]
 
             # TODO: fix vPos as well, check how big list is? (How deep vertical is)
-        elif hOrient == H_ORIENT["Left"]:
+        elif hOrient == H_ORIENT["left"]:
             self.__boxSetup[setupName]["boxOrder"].insert(0, boxName)
-        elif hOrient == H_ORIENT["Right"]:
+        elif hOrient == H_ORIENT["right"]:
             self.__boxSetup[setupName]["boxOrder"].append(boxName)
         else:
             self.__boxSetup[setupName]["boxOrder"].append(boxName)
@@ -321,7 +321,7 @@ class TerminalTextBoxes():
             self.__boxSetup[setupName]["focusedBox"]= next(iter(self.__boxSetup[setupName]["boxes"]))# }}}
 
 
-    def set_info_prompt_message(self, text, timeout=None):
+    def set_info_prompt_text(self, text, timeout=None):
         """ Sets info message above the prompt.
             Arguments:
                 text                - The text to be set in the info prompt.            (str)
@@ -335,7 +335,7 @@ class TerminalTextBoxes():
         textMaxLen = self.__wTerminal - (self.__infoPromptTextIndent * 2) - 2
         textEndX = textStartX + len(text[:textMaxLen])
 
-        self.__infoPromptCurrMessage = text
+        self.__infoPromptCurrText = text
         bgAttr = self.__merge_attributes(self.__infoPromptCharAttr)
         textAttr = self.__merge_attributes(self.__infoPromptTextAttr)
 
@@ -534,10 +534,10 @@ class TerminalTextBoxes():
             attr["textHeight"] = attr["boxHeight"] - frameTotalHeight - (attr["hTextIndent"] * 2)
 
             # Box orientation horizontal/ vertical
-            if attr["hOrient"] == H_ORIENT["Right"] and attr["fixedWidth"] != None and wForUnusedUsed == False:
+            if attr["hOrient"] == H_ORIENT["right"] and attr["fixedWidth"] != None and wForUnusedUsed == False:
                 wIndex = wIndex + wForUnused
                 wForUnusedUsed = True
-            if attr["vOrient"] == V_ORIENT["Down"] and attr["fixedHeight"] != None and hForUnusedUsed == False:
+            if attr["vOrient"] == V_ORIENT["down"] and attr["fixedHeight"] != None and hForUnusedUsed == False:
                 hIndex = hIndex + (self.__hTerminal - (self.__promptHeight + self.__FRAME_SIZE) - attr["boxHeight"])
                 hForUnusedUsed = True
 
@@ -675,7 +675,7 @@ class TerminalTextBoxes():
         if not self.__infoPromptActive:
             self.__reset_info_prompt()
         else:
-            self.set_info_prompt_message(self.__infoPromptCurrMessage)
+            self.set_info_prompt_text(self.__infoPromptCurrText)
 
 
     def __update_prompt(self):
@@ -922,7 +922,7 @@ class TerminalTextBoxes():
             Arguments:
                 setupName           - The name of the box setup.                                    (str)
                 boxName             - The name of the text box.                                     (str)
-                orient              - Horizontal orientation of the box (0 : Left, 1 : Right).      (int)
+                orient              - Horizontal orientation of the box (0 : left, 1 : right).      (int)
         """
         self.__check_text_box_valid(setupName, boxName)
 
@@ -948,7 +948,7 @@ class TerminalTextBoxes():
             Arguments:
                 setupName           - The name of the box setup.                                    (str)
                 boxName             - The name of the text box.                                     (str)
-                orient              - Vertical orientation of the box (0 : Up, 1 : Down).           (int)
+                orient              - Vertical orientation of the box (0 : up, 1 : down).           (int)
         """
         self.__check_text_box_valid(setupName, boxName)
 
@@ -1164,7 +1164,6 @@ class TerminalTextBoxes():
         """ Set the active box setup.
             Arguments:
                 setupName           - The name of the box setup.            (str)
-                boxName             - The name of the text box.             (str)
         """
         self.__check_box_setup_valid(setupName)
 
@@ -1208,12 +1207,20 @@ class TerminalTextBoxes():
         self.__boxSetup[setupName]["boxes"][boxName]["scrollVisable"] = visable
 
 
-    def set_prompt_callback_function(self, function):
-        """ Set the prompt callback function every time <ENTER> is pressed.
+    def set_prompt_char_callback_function(self, function):
+        """ Set the prompt char callback function every time a key is pressed.
             Arguments:
                 function            - The callback function.        (Function)
         """
-        self.__promptCallbackFunction = function
+        self.__promptCharCallbackFunction = function
+
+
+    def set_prompt_callback_function(self, function):
+        """ Set the prompt enter callback function every time <ENTER> is pressed.
+            Arguments:
+                function            - The callback function.        (Function)
+        """
+        self.__promptEnterCallbackFunction = function
 
 
     ###################################################################################################################
@@ -1425,8 +1432,8 @@ class TerminalTextBoxes():
 
         self.__boxSetup[setupName]["boxes"][boxName]["fixedWidth"]          = None
         self.__boxSetup[setupName]["boxes"][boxName]["fixedHeight"]         = None
-        self.__boxSetup[setupName]["boxes"][boxName]["hOrient"]             = H_ORIENT["Left"]
-        self.__boxSetup[setupName]["boxes"][boxName]["vOrient"]             = V_ORIENT["Up"]
+        self.__boxSetup[setupName]["boxes"][boxName]["hOrient"]             = H_ORIENT["left"]
+        self.__boxSetup[setupName]["boxes"][boxName]["vOrient"]             = V_ORIENT["up"]
         self.__boxSetup[setupName]["boxes"][boxName]["visable"]             = True
         self.__boxSetup[setupName]["boxes"][boxName]["wTextIndent"]         = 0
         self.__boxSetup[setupName]["boxes"][boxName]["hTextIndent"]         = 0
@@ -1599,11 +1606,11 @@ class TestTextBox():
 
     def __init__(self):
         """  """
-        self.tb = TerminalTextBoxes(self.test_callback)
+        self.tb = TerminalTextBoxes(enterCallback=self.test_callback)
         self.tb.create_text_box_setup("setup")
 
         self.tb.create_text_box("setup", "text", frameAttr="green", wTextIndent=1)
-        self.tb.create_text_box("setup", "info", 20, frameAttr="red", hOrient=H_ORIENT["Right"])
+        self.tb.create_text_box("setup", "info", 20, frameAttr="red", hOrient=H_ORIENT["right"])
 
         self.tb.set_focus_box("setup", "text")
 
@@ -1614,11 +1621,11 @@ class TestTextBox():
         if message.startswith("!note"):
             message = message.replace("!note", "NOTE:")
             self.tb.infoPromptTextAttr = ["yellow", "bold"]
-            self.tb.set_info_prompt_message(message, 5000)
+            self.tb.set_info_prompt_text(message, 5000)
         elif message.startswith("!error"):
             message = message.replace("!error", "ERROR:")
             self.tb.infoPromptTextAttr = ["red", "bold"]
-            self.tb.set_info_prompt_message(message, 5000)
+            self.tb.set_info_prompt_text(message, 5000)
         else:
             self.tb.infoPromptTextAttr = ["white"]
             self.tb.add_text_item("setup", "text", message, attributes=["white", "bold"])
