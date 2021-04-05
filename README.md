@@ -13,7 +13,13 @@ Install the required packages:
     $ pip install -r requirements.txt
 
 
+## Example Usage
+
+[Click here](src/tests/loopback.py) to view a test application (loopback.py) of the framework. A simple application that creates a setup with two boxes. Whenever you press enter, the text will loopback to the left-most box.
+
+![An image of the loopback test application](images/loopback_example.png)
 
 
+## Documentation
 
-## Usage
+For more information about the different functions and structures, [click here](docs/docs.md).
