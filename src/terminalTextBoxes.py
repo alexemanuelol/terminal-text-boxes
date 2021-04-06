@@ -791,6 +791,11 @@ class TerminalTextBoxes():
             self.__promptVCursorPos = len(string)
 
 
+    def get_prompt_cursor_pos(self):
+        """ Get the prompt cursor position. """
+        return self.__promptCursorPos
+
+
     def get_info_prompt_char(self):
         """ Get the info prompt character. """
         return self.__infoPromptChar

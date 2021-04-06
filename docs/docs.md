@@ -274,6 +274,10 @@ Arguments:
 - **string** : The string displayed in the prompt. (**str**)
 
 
+### get_prompt_cursor_pos()
+Get the prompt cursor position.
+
+
 ### get_info_prompt_char()
 Get the info prompt character.
 
