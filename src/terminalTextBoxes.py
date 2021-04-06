@@ -1237,9 +1237,6 @@ class TerminalTextBoxes():
 
             focusedBox = self.__boxSetup[self.__activeBoxSetup]["focusedBox"]
 
-            if self.__promptCharCallbackFunction != None:
-                self.__promptCharCallbackFunction(char)
-
             # GENERAL KEY EVENTS --------------------------------------------------------------------------------------
             if char == "\x1b":                  # <ESC> KEY (Exit)
                 break
@@ -1267,11 +1264,6 @@ class TerminalTextBoxes():
                 if self.__promptCursorPos != 0:
                     self.__promptCursorPos -= 1
 
-                if self.__resizeDone:
-                    self.__update_prompt()
-                    self.__update_visual_cursor()
-                    continue
-
             elif char == 261:                   # <ARROW-RIGHT> KEY (Scroll right)
                 if self.__promptVCursorPos < len(self.__promptString) and \
                    self.__promptVCursorPos != self.__promptLineWidth:
@@ -1279,19 +1271,9 @@ class TerminalTextBoxes():
                 if self.__promptCursorPos < len(self.__promptString):
                     self.__promptCursorPos += 1
 
-                if self.__resizeDone:
-                    self.__update_prompt()
-                    self.__update_visual_cursor()
-                    continue
-
             elif char == 262:                   # HOME KEY
                 self.__promptVCursorPos = 0
                 self.__promptCursorPos = 0
-
-                if self.__resizeDone:
-                    self.__update_prompt()
-                    self.__update_visual_cursor()
-                    continue
 
             elif char == 358 or char == 360:    # END KEY
                 if len(self.__promptString) >= self.__promptLineWidth:
@@ -1299,11 +1281,6 @@ class TerminalTextBoxes():
                 else:
                     self.__promptVCursorPos = len(self.__promptString)
                 self.__promptCursorPos = len(self.__promptString)
-
-                if self.__resizeDone:
-                    self.__update_prompt()
-                    self.__update_visual_cursor()
-                    continue
 
             elif char == 330:                   # DELETE KEY
                 self.__promptString = self.__promptString[:self.__promptCursorPos] + \
@@ -1313,11 +1290,6 @@ class TerminalTextBoxes():
                     if len(self.__promptString) == (self.__promptVRightPos - 1) and \
                        self.__promptVCursorPos != self.__promptLineWidth:
                         self.__promptVCursorPos += 1
-
-                if self.__resizeDone:
-                    self.__update_prompt()
-                    self.__update_visual_cursor()
-                    continue
 
             elif char == "\x08" or char == 263 or char == "\x7f": # BACKSPACE KEY
                 self.__promptString = self.__promptString[:self.__promptCursorPos][:-1] + \
@@ -1332,11 +1304,6 @@ class TerminalTextBoxes():
                 if self.__promptCursorPos != 0:
                     self.__promptCursorPos -= 1
 
-                if self.__resizeDone:
-                    self.__update_prompt()
-                    self.__update_visual_cursor()
-                    continue
-
             elif char == "\x16":                # CTRL + V (paste)
                 copy = self.__get_clipboard()
                 if copy != None and copy != False:
@@ -1346,11 +1313,6 @@ class TerminalTextBoxes():
                         self.__promptVCursorPos = self.__promptLineWidth
                     else:
                         self.__promptVCursorPos += len(copy)
-
-                if self.__resizeDone:
-                    self.__update_prompt()
-                    self.__update_visual_cursor()
-                    continue
 
             elif char == "\n": # <ENTER>
                 if self.__promptString != "" and self.__promptEnterCallbackFunction != None:
@@ -1397,10 +1359,8 @@ class TerminalTextBoxes():
                         self.__promptVCursorPos += 1
                     self.__promptCursorPos += 1
 
-                if self.__resizeDone:
-                    self.__update_prompt()
-                    self.__update_visual_cursor()
-                    continue
+            if self.__promptCharCallbackFunction != None:
+                self.__promptCharCallbackFunction(char)
 
             self.update()
 
