@@ -1244,6 +1244,8 @@ class TerminalTextBoxes():
 
             # GENERAL KEY EVENTS --------------------------------------------------------------------------------------
             if char == "\x1b":                  # <ESC> KEY (Exit)
+                if self.__promptCharCallbackFunction != None:
+                    self.__promptCharCallbackFunction(char)
                 break
 
             elif char == "\x00":                # "WINDOWS" KEY
