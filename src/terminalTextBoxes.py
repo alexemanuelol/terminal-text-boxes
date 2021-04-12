@@ -318,7 +318,7 @@ class TerminalTextBoxes():
             self.__boxSetup[setupName]["focusedBox"]= None
             raise Exception("No more text boxes left in the setup.")
         else:
-            self.__boxSetup[setupName]["focusedBox"]= next(iter(self.__boxSetup[setupName]["boxes"]))# }}}
+            self.__boxSetup[setupName]["focusedBox"]= next(iter(self.__boxSetup[setupName]["boxes"]))
 
 
     def set_info_prompt_text(self, text, timeout=None):
@@ -1371,7 +1371,7 @@ class TerminalTextBoxes():
 
             self.update()
 
-        curses.endwin() # Close curses terminal}}}
+        curses.endwin() # Close curses terminal
 
 
     ###################################################################################################################
